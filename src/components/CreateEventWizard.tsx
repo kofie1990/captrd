@@ -60,6 +60,10 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
 
   const [isEditingCover, setIsEditingCover] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
+  
+  // Step 7 State
+  const [createdEvent, setCreatedEvent] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -135,7 +139,8 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
       .single();
 
     if (!error && data) {
-      onEventCreated(data);
+      setCreatedEvent(data);
+      setStep(7);
     }
     setIsSubmitting(false);
   };
@@ -392,10 +397,10 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
         </div>
       </div>
 
-      {/* STEP 6: FULL SCREEN TAP-TO-EDIT DESIGNER */}
+      {/* STEP 6 & 7 CONTAINER */}
       <AnimatePresence>
-        {step === 6 && (
-          <motion.div
+        {(step === 6 || step === 7) && (
+          <motion.div 
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -403,7 +408,7 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
             className="fixed inset-0 z-[100] bg-black text-white flex justify-center items-center lg:p-8"
           >
             {/* The Full Screen Card */}
-            <div className="relative w-full h-full lg:max-w-[450px] lg:aspect-[9/16] lg:h-auto bg-black lg:rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] border-0 lg:border border-white/10 group">
+            <div className={`relative w-full h-full lg:max-w-[450px] lg:aspect-[9/16] lg:h-auto bg-black lg:rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] border-0 lg:border border-white/10 group ${step === 7 ? 'blur-md brightness-50 scale-95 transition-all duration-1000' : 'transition-all duration-500'}`}>
 
               {/* Background Image (Cover Photo) */}
               <div
@@ -573,6 +578,59 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
               )}
             </AnimatePresence>
 
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* STEP 7 OVERLAY (Success & Share) */}
+      <AnimatePresence>
+        {step === 7 && createdEvent && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="fixed inset-0 z-[110] flex flex-col justify-center items-center p-6 text-white pointer-events-none"
+          >
+            <div className="relative z-10 w-full max-w-sm flex flex-col items-center text-center pointer-events-auto">
+               <motion.div 
+                 initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}
+                 className="w-20 h-20 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center mb-6 shadow-2xl"
+               >
+                 <CheckCircle2 className="w-10 h-10 text-white" />
+               </motion.div>
+               <h2 className="font-serif text-4xl mb-3 drop-shadow-lg tracking-tight">Roll Published!</h2>
+               <p className="font-mono text-[10px] uppercase tracking-widest opacity-80 mb-10 px-4 leading-relaxed drop-shadow-md">
+                 Your film roll is now live. Send the invite to your first guest to get started.
+               </p>
+
+               <div className="w-full flex flex-col gap-3">
+                 <button
+                   onClick={async () => {
+                     const url = window.location.origin + "/e/" + (createdEvent.short_code || createdEvent.id);
+                     if (navigator.share) {
+                       navigator.share({
+                         title: createdEvent.title,
+                         text: 'Join my film roll!',
+                         url: url
+                       }).catch(console.error);
+                     } else {
+                       navigator.clipboard.writeText(url);
+                       setCopied(true);
+                       setTimeout(() => setCopied(false), 2000);
+                     }
+                   }}
+                   className="w-full py-4 rounded-full bg-white text-black font-mono text-[10px] md:text-xs font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                 >
+                   {copied ? "Link Copied!" : "Share Invite Link"}
+                 </button>
+
+                 <button
+                   onClick={() => onEventCreated(createdEvent)}
+                   className="w-full py-4 rounded-full border border-white/30 backdrop-blur-md bg-black/40 hover:bg-black/60 font-mono text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors hover:scale-[1.02] active:scale-95"
+                 >
+                   Go to Dashboard
+                 </button>
+               </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

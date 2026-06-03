@@ -1,5 +1,6 @@
 import Navigation from "@/components/Navigation";
 import HeroPanel from "@/components/HeroPanel";
+import ActionButtons from "@/components/ActionButtons";
 
 export default function Home() {
   return (
@@ -22,14 +23,7 @@ export default function Home() {
               Recreating the disposable camera experience for modern events. Curated aesthetics, delayed reveals, and a shared film roll for everyone present.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 md:gap-6 mt-2 md:mt-0">
-              <button className="bg-foreground text-background px-8 md:px-10 py-4 md:py-5 text-sm font-medium tracking-widest uppercase hover:opacity-90 transition-opacity flex items-center justify-center">
-                Create Event
-              </button>
-              <button className="border border-foreground/20 px-8 md:px-10 py-4 md:py-5 text-sm font-medium tracking-widest uppercase hover:bg-foreground/5 transition-colors flex items-center justify-center">
-                Join a Film
-              </button>
-            </div>
+            <ActionButtons />
           </div>
         </div>
 

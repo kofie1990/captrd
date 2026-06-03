@@ -69,13 +69,18 @@ export default function PrintPoster() {
           print-color-adjust: exact !important;
         }
         @media print {
+          html, body {
+            width: 100vw !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+          }
           .no-print {
             display: none !important;
           }
         }
       `}</style>
       
-      <main className="w-[210mm] h-[297mm] relative overflow-hidden bg-black text-white mx-auto shadow-2xl flex flex-col justify-end print:w-full print:h-full print:shadow-none">
+      <main className="w-[210mm] h-[297mm] relative overflow-hidden bg-black text-white mx-auto shadow-2xl flex flex-col justify-end print:fixed print:inset-0 print:w-[100vw] print:h-[100vh] print:shadow-none print:m-0 print:z-50">
         
         {/* Background Image */}
         <img 

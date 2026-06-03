@@ -40,7 +40,7 @@ export default function Navigation() {
 
           {/* Desktop Links */}
           <div className="hidden md:flex gap-10 text-sm font-medium tracking-wide uppercase">
-            <Link href="/about" className="hover:opacity-70 transition-opacity">Studio</Link>
+            <Link href="/studio" className="hover:opacity-70 transition-opacity">Studio</Link>
             <Link href="/pricing" className="hover:opacity-70 transition-opacity">Pricing</Link>
             <Link href="/login" className="hover:opacity-70 transition-opacity">Sign In</Link>
           </div>
@@ -67,7 +67,7 @@ export default function Navigation() {
             className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center"
           >
             <div className="flex flex-col gap-12 text-3xl font-serif tracking-wide text-center">
-              <Link href="/about" onClick={() => setMenuOpen(false)} className="hover:opacity-70 transition-opacity">Studio</Link>
+              <Link href="/studio" onClick={() => setMenuOpen(false)} className="hover:opacity-70 transition-opacity">Studio</Link>
               <Link href="/pricing" onClick={() => setMenuOpen(false)} className="hover:opacity-70 transition-opacity">Pricing</Link>
               <Link href="/login" onClick={() => setMenuOpen(false)} className="hover:opacity-70 transition-opacity">Sign In</Link>
             </div>

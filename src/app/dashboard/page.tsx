@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import Navigation from "@/components/Navigation";
 import FilterSelector from "@/components/FilterSelector";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -21,6 +20,7 @@ export default function Dashboard() {
   const [totalPhotos, setTotalPhotos] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [sharingEvent, setSharingEvent] = useState<Event | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -35,6 +35,7 @@ export default function Dashboard() {
         return;
       }
       setUserId(session.user.id);
+      setUserName(session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "Photographer");
 
       const { data } = await supabase
         .from("events")
@@ -83,44 +84,66 @@ export default function Dashboard() {
   if (loading) return null;
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col relative pt-24 px-6 md:px-16 pb-20">
-      <Navigation />
-
-      {/* Studio Overview */}
-      <div className="w-full max-w-[1600px] mx-auto mt-4 md:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="p-6 md:p-8 glass rounded-[2rem] flex flex-col justify-center shadow-lg">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-60 mb-2">Total Rolls</p>
-          <p className="font-serif text-4xl md:text-5xl">{events.length}</p>
-        </div>
-        <div className="p-6 md:p-8 glass rounded-[2rem] flex flex-col justify-center shadow-lg">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-60 mb-2">Moments Captured</p>
-          <p className="font-serif text-4xl md:text-5xl">{totalPhotos}</p>
+    <main className="min-h-screen bg-background text-foreground flex flex-col relative pt-8 md:pt-12 px-6 md:px-16 pb-20">
+      {/* Welcome Section */}
+      <div className="w-full max-w-[1600px] mx-auto mt-8 md:mt-12 mb-6 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div>
+          <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl tracking-tight">
+            Welcome back, <span className="italic">{userName || "Photographer"}</span>
+          </h1>
+          <p className="text-foreground/60 mt-2 max-w-lg text-sm md:text-base">
+            Manage your rolls, order prints, and grow your studio.
+          </p>
         </div>
         
-        <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-           <a href="#" className="p-6 md:p-8 border border-foreground/10 rounded-[2rem] hover:bg-foreground/5 transition-colors group relative overflow-hidden flex flex-col justify-center">
-             <p className="font-serif text-xl md:text-2xl mb-2 group-hover:translate-x-2 transition-transform duration-300">Order Prints</p>
-             <p className="font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-40">Physical Film Delivery &rarr;</p>
-           </a>
-           <a href="#" className="p-6 md:p-8 border border-foreground/10 rounded-[2rem] hover:bg-foreground/5 transition-colors group relative overflow-hidden flex flex-col justify-center bg-[#0a0a0a] text-white">
-             <p className="font-serif text-xl md:text-2xl mb-2 group-hover:translate-x-2 transition-transform duration-300">Marketing Kit</p>
-             <p className="font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60">Table Tents & Posters &rarr;</p>
+        {/* Primary Action */}
+        <div className="w-full lg:w-auto mt-6 lg:mt-0">
+           <a href="/dashboard/order" className="p-6 md:p-8 border border-foreground/20 bg-foreground/5 backdrop-blur-md rounded-[2rem] hover:bg-foreground/10 transition-colors group relative overflow-hidden flex flex-col justify-center min-w-[280px]">
+             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:scale-110 transition-transform duration-500">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+             </div>
+             <p className="font-serif text-2xl md:text-3xl mb-2 group-hover:translate-x-2 transition-transform duration-300">Order Prints</p>
+             <p className="font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60">Physical Film Delivery &rarr;</p>
            </a>
         </div>
       </div>
+
+      {/* Studio Overview Metrics */}
+      <div className="w-full max-w-[1600px] mx-auto mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-12">
+        <div className="p-6 md:p-8 glass rounded-[2rem] flex flex-col justify-center shadow-lg border border-foreground/5 bg-foreground/5 backdrop-blur-md relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </div>
+          <p className="font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 mb-2 relative z-10">Total Rolls</p>
+          <p className="font-serif text-4xl md:text-5xl relative z-10 group-hover:scale-105 transition-transform duration-300 origin-left">{events.length}</p>
+        </div>
+        <div className="p-6 md:p-8 glass rounded-[2rem] flex flex-col justify-center shadow-lg border border-foreground/5 bg-foreground/5 backdrop-blur-md relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          </div>
+          <p className="font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 mb-2 relative z-10">Moments Captured</p>
+          <p className="font-serif text-4xl md:text-5xl relative z-10 group-hover:scale-105 transition-transform duration-300 origin-left">{totalPhotos}</p>
+        </div>
+        <div className="col-span-2 p-6 md:p-8 rounded-[2rem] border border-foreground/10 bg-gradient-to-br from-foreground/5 to-transparent flex flex-col justify-center relative overflow-hidden group">
+          <div className="absolute -right-10 -top-10 w-40 h-40 bg-foreground/10 rounded-full blur-3xl group-hover:bg-foreground/20 transition-colors duration-500"></div>
+          <h3 className="font-serif text-xl md:text-2xl mb-1 relative z-10">Capture every memory</h3>
+          <p className="text-sm opacity-60 max-w-sm relative z-10">Create a new roll to start collecting photos from your guests.</p>
+        </div>
+      </div>
       
-      <div className="w-full max-w-[1600px] mx-auto mt-12">
-        {/* Existing Events Column */}
+      <div className="w-full max-w-[1600px] mx-auto">
         <div className="w-full">
           <div className="flex justify-between items-center mb-8">
             <h2 className="font-serif text-3xl">Your Rolls</h2>
-            <a href="/dashboard/create" className="bg-white text-black px-8 py-3 rounded-full font-medium uppercase tracking-widest text-sm hover:opacity-90 active:scale-[0.98] transition-all">
-              + Create New Roll
+            <a href="/dashboard/create" className="bg-foreground/5 border border-foreground/10 text-foreground px-6 py-2.5 rounded-full font-mono font-bold uppercase tracking-widest text-[10px] md:text-xs hover:bg-foreground/10 active:scale-[0.98] transition-all flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <span className="hidden md:inline">Create Roll</span>
+              <span className="md:hidden">Create</span>
             </a>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
             {events.map((ev) => (
-              <div key={ev.id} className="relative aspect-[4/5] rounded-[3rem] overflow-hidden group shadow-2xl border border-white/10 bg-black">
+              <div key={ev.id} className="relative aspect-[4/5] rounded-[3rem] overflow-hidden group shadow-2xl border border-foreground/10 bg-black">
                 {/* Background Cover Photo */}
                 <img 
                   src={ev.cover_photo_url || "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=800&auto=format&fit=crop"} 

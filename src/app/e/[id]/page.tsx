@@ -83,31 +83,58 @@ export default function EventPortal() {
     const handleNameSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (guestName.trim()) {
-        sessionStorage.setItem(`captr_guest_${eventId}`, guestName);
+        sessionStorage.setItem(`captrd_guest_${eventId}`, guestName);
         setHasEnteredName(true);
       }
     };
 
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative">
-        {eventData.cover_photo_url && (
-          <img src={eventData.cover_photo_url} className="absolute inset-0 w-full h-full object-cover opacity-20" alt="Background" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+      <main className="fixed inset-0 bg-black text-white flex flex-col justify-end">
+        {/* Background Image (Cover Photo) */}
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center opacity-80"
+          style={{ backgroundImage: `url(${eventData.cover_photo_url || "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=800&auto=format&fit=crop"})` }}
+        />
+        
+        {/* Dark Gradients for Text Readability */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/40 via-transparent to-black/95 pointer-events-none" />
 
-        <div className="w-full max-w-md p-10 md:p-12 glass rounded-[3rem] text-center shadow-2xl z-10 border border-foreground/10 backdrop-blur-2xl">
-          <h1 className="font-serif text-4xl md:text-5xl mb-3 tracking-tight">{eventData.title}</h1>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-50 mb-12">Sign the guestbook to grab a camera</p>
-          <form onSubmit={handleNameSubmit} className="flex flex-col gap-8">
-            <input
-              type="text"
-              placeholder="Your Name"
-              required
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              className="w-full bg-transparent border-b border-foreground/20 py-3 text-center focus:outline-none focus:border-foreground text-2xl font-serif transition-colors"
-            />
-            <button type="submit" className="mt-2 bg-foreground text-background py-5 rounded-full font-medium uppercase tracking-widest text-sm hover:opacity-90 active:scale-[0.98] transition-all">
+        {/* Content Area */}
+        <div className="relative z-10 w-full p-6 md:p-12 flex flex-col items-center text-center pb-12 animate-in slide-in-from-bottom-8 duration-1000 fade-in">
+          
+          {/* Event Title */}
+          <h1 className="font-serif text-5xl md:text-7xl mb-4 drop-shadow-lg tracking-tight leading-tight max-w-[90%]">
+            {eventData.title}
+          </h1>
+          
+          {/* Event Date */}
+          <p className="font-mono text-xs md:text-sm uppercase tracking-[0.3em] opacity-80 mb-8 drop-shadow-md">
+            {new Date(eventData.reveal_at).toLocaleDateString()}
+          </p>
+
+          {/* Custom Invite Details */}
+          {eventData.invite_details && (
+            <p className="font-serif text-xl md:text-2xl italic opacity-90 max-w-[85%] leading-relaxed drop-shadow-md mb-12">
+              "{eventData.invite_details}"
+            </p>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleNameSubmit} className="w-full max-w-sm flex flex-col gap-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Enter your name to join"
+                required
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                className="w-full bg-black/40 backdrop-blur-xl border border-white/20 rounded-[2rem] py-5 px-6 text-center focus:outline-none focus:border-white text-lg font-serif transition-colors shadow-2xl placeholder:text-white/40"
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="w-full bg-white text-black py-5 rounded-[2rem] font-mono font-bold uppercase tracking-widest text-xs shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
               Join Film Roll
             </button>
           </form>

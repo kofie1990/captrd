@@ -4,7 +4,7 @@ import { useState } from "react";
 import { 
   format, addMonths, subMonths, startOfMonth, endOfMonth, 
   startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay,
-  isToday
+  isToday, isBefore, startOfDay
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -87,16 +87,19 @@ export default function CustomDatePicker({ selectedDate, onSelect, label = "Date
                   const isSelected = selectedDate && isSameDay(date, selectedDate);
                   const isCurrentMonth = isSameMonth(date, currentMonth);
                   const isCurrentDay = isToday(date);
+                  const isPast = isBefore(startOfDay(date), startOfDay(new Date()));
 
                   return (
                     <button
                       key={i}
                       type="button"
+                      disabled={isPast}
                       onClick={() => handleSelect(date)}
                       className={`
                         h-10 w-full rounded-full flex items-center justify-center text-sm transition-all
-                        ${!isCurrentMonth ? "opacity-20 hover:opacity-50" : "hover:bg-white/10"}
-                        ${isSelected ? "bg-white text-black font-medium hover:bg-white hover:opacity-90 scale-110 shadow-lg" : ""}
+                        ${!isCurrentMonth ? "opacity-20" : ""}
+                        ${isPast ? "opacity-20 cursor-not-allowed" : "hover:bg-white/10"}
+                        ${isSelected && !isPast ? "bg-white text-black font-medium hover:bg-white hover:opacity-90 scale-110 shadow-lg" : ""}
                         ${isCurrentDay && !isSelected ? "border border-white/20" : ""}
                       `}
                     >

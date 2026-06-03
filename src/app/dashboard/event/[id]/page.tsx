@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import Navigation from "@/components/Navigation";
 import { Trash2, Unlock, AlertTriangle, ArrowLeft, UploadCloud, Users, Image as ImageIcon, X as CloseIcon, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import FilterSelector from "@/components/FilterSelector";
 import { getFilterClass } from "@/lib/filters";
@@ -222,8 +221,6 @@ export default function AdminEventPortal() {
 
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col relative pb-20">
-      <Navigation />
-
       {/* Hero Cover Photo Section */}
       <div className="w-full h-[50vh] min-h-[400px] relative group overflow-hidden">
         {eventData.cover_photo_url ? (
