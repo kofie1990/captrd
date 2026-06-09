@@ -15,9 +15,10 @@ type Props = {
   latestPhotoUrl?: string;
   onPhotoTaken?: (url: string) => void;
   maxPhotos?: number;
+  isEmbedded?: boolean;
 };
 
-export default function CameraViewfinder({ eventId, guestName, filter, isRevealed, onViewGallery, latestPhotoUrl, onPhotoTaken, maxPhotos = 15 }: Props) {
+export default function CameraViewfinder({ eventId, guestName, filter, isRevealed, onViewGallery, latestPhotoUrl, onPhotoTaken, maxPhotos = 15, isEmbedded = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
@@ -189,8 +190,13 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
     const capabilities = track.getCapabilities() as any;
     if (capabilities.focusMode && capabilities.pointsOfInterest) {
       try {
+        const advancedConstraint: any = { focusMode: "continuous", pointsOfInterest: [{ x, y }] };
+        // If device supports exposure targeting, adjust lighting automatically
+        if (capabilities.exposureMode) {
+          advancedConstraint.exposureMode = "continuous";
+        }
         await track.applyConstraints({
-          advanced: [{ focusMode: "continuous", pointsOfInterest: [{ x, y }] } as any]
+          advanced: [advancedConstraint]
         });
       } catch (err) {
         console.error("[Captrd] Tap to focus not supported.", err);
@@ -233,8 +239,17 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
 
     // Use the track's real resolution, not the displayed size
     const settings = track.getSettings();
-    const width = settings.width || video.videoWidth;
-    const height = settings.height || video.videoHeight;
+    let width = settings.width || video.videoWidth;
+    let height = settings.height || video.videoHeight;
+
+    // Limit resolution to prevent out-of-memory crashes on iOS Safari
+    // which causes enhanceImage to fail and drop the CSS filter.
+    const MAX_DIMENSION = 1920;
+    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+      const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
 
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -267,25 +282,19 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
     const track = streamRef.current.getVideoTracks()[0];
     if (!track) return;
 
-    // Trigger shutter flash animation
-    setShutterFlash(true);
-    setTimeout(() => setShutterFlash(false), 150);
+    // Trigger shutter flash animation only if flash is enabled
+    if (flash) {
+      setShutterFlash(true);
+      setTimeout(() => setShutterFlash(false), 150);
+    }
 
     const isSelfie = facingMode === "user";
 
     try {
-      let rawBlob: Blob;
-
-      // Primary path: ImageCapture API — captures at full sensor resolution
-      if (typeof ImageCapture !== "undefined") {
-        const imageCapture = new ImageCapture(track);
-        rawBlob = await imageCapture.takePhoto();
-        console.log(`[Captrd] ImageCapture photo: ${(rawBlob.size / 1024 / 1024).toFixed(2)} MB, type: ${rawBlob.type}`);
-      } else {
-        // Fallback: high-res canvas snapshot from the video stream
-        console.warn("[Captrd] ImageCapture not supported — using canvas fallback");
-        rawBlob = await captureFromCanvas(track);
-      }
+      // ALWAYS use canvas capture!
+      // This prevents the native OS "shutter" flash and auto-exposure dimming
+      // that ImageCapture.takePhoto() forces on iOS/Android, preserving exact lighting.
+      let rawBlob = await captureFromCanvas(track);
 
       // Show instant raw preview (before processing)
       const rawUrl = URL.createObjectURL(rawBlob);
@@ -295,7 +304,7 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
       // Single-pass: mirror (if selfie) + enhance — one canvas, minimal memory
       setEnhancing(true);
       try {
-        const processed = await enhanceImage(rawBlob, { mirror: isSelfie, cssFilter: getCssFilter(filter), bloom: getFilterBloom(filter) });
+        const processed = await enhanceImage(rawBlob, { mirror: isSelfie, bloom: getFilterBloom(filter) });
         const processedUrl = URL.createObjectURL(processed);
         setPreviewUrl(prev => {
           if (prev) URL.revokeObjectURL(prev);
@@ -356,7 +365,7 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
     };
     
     mediaRecorderRef.current = mediaRecorder;
-    mediaRecorder.start(1000); // collect 1 sec chunks
+    mediaRecorder.start(); // collect as one chunk to prevent glitches
     
     let timeLeft = 10;
     recordingIntervalRef.current = setInterval(() => {
@@ -454,7 +463,7 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
   const isLimitReached = photosTaken >= maxPhotos;
 
   return (
-    <div className="fixed inset-0 bg-black z-[100] flex flex-col justify-between overflow-hidden select-none">
+    <div className={`${isEmbedded ? 'absolute' : 'fixed'} inset-0 bg-black z-[100] flex flex-col justify-between overflow-hidden select-none`}>
       {/* Top Bar */}
       <div className="absolute top-0 inset-x-0 p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/60 to-transparent pb-16">
         <div className="flex flex-col">
@@ -508,7 +517,7 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
           <>
             {previewUrl && (
               <div className="relative w-full h-full">
-                <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
+                <img src={previewUrl} className={`w-full h-full object-cover ${getFilterClass(filter)}`} alt="Preview" />
                 {enhancing && (
                   <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md text-white font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded-full z-30">
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -600,13 +609,13 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
       <div className="h-40 bg-black flex items-center justify-between px-8 md:px-12 z-20 pb-8 relative">
         {/* Left: Gallery Thumbnail */}
         <div className="w-14 h-14 md:w-16 md:h-16 relative">
-          {isRevealed && onViewGallery && (
+          {onViewGallery && (
             <button 
-              onClick={onViewGallery}
-              className="w-full h-full rounded-xl overflow-hidden border-2 border-white/20 active:scale-95 transition-transform group relative bg-[#222]"
+              onClick={() => isRevealed ? onViewGallery() : null}
+              className={`w-full h-full rounded-xl overflow-hidden border-2 border-white/20 transition-transform group relative bg-[#222] ${isRevealed ? 'active:scale-95 cursor-pointer' : 'cursor-default'}`}
             >
                {latestPhotoUrl ? (
-                 <img src={latestPhotoUrl} alt="Gallery Preview" className={`w-full h-full object-cover ${getFilterClass(filter)} group-hover:scale-110 transition-transform`} />
+                 <img src={latestPhotoUrl} alt="Gallery Preview" className={`w-full h-full object-cover ${getFilterClass(filter)} ${isRevealed ? 'group-hover:scale-110' : ''} transition-transform`} />
                ) : (
                  <div className="w-full h-full flex items-center justify-center group-hover:bg-[#333] transition-colors">
                     <ImageIcon className="w-6 h-6 opacity-40" />

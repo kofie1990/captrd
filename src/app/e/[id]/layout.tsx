@@ -6,20 +6,23 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type Props = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const eventId = params.id;
-  
+  const resolvedParams = await params;
+  const eventId = resolvedParams.id;
+
   let query = supabase.from("events").select("*");
-  if (eventId.length === 36) {
+  if (eventId && eventId.length === 36) {
     query = query.eq("id", eventId);
+  } else if (eventId) {
+    query = query.eq("short_code", eventId.toLowerCase());
   } else {
-    query = query.eq("short_code", eventId);
+    return { title: 'Event Not Found | Captrd' };
   }
 
-  const { data } = await query.single();
+  const { data } = await query.maybeSingle();
 
   if (!data) {
     return {
@@ -29,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const defaultImage = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=800&auto=format&fit=crop";
   const imageUrl = data.cover_photo_url || defaultImage;
-  const description = data.invite_details || 'Join my film roll to capture and share memories!';
+  const description = data.invite_details || 'Join my film roll to captr and share memories!';
 
   return {
     title: `${data.title} | Captrd`,

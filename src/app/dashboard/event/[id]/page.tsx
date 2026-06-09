@@ -343,7 +343,7 @@ export default function AdminEventPortal() {
                 {photo.media_type === 'video' ? (
                   <video src={photo.storage_path} className={`w-full h-auto object-cover ${getFilterClass(eventData.aesthetic_filter)}`} muted loop playsInline autoPlay />
                 ) : (
-                  <img src={photo.storage_path} className={`w-full h-auto object-cover ${getFilterClass(eventData.aesthetic_filter)}`} alt="Captured" />
+                  <img src={photo.storage_path} className={`w-full h-auto object-cover ${getFilterClass(eventData.aesthetic_filter)}`} alt="Captrd" />
                 )}
 
                 {/* Overlay for admin controls: always visible on mobile, hover on desktop */}

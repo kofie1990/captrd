@@ -13,7 +13,7 @@ export default function ActionButtons() {
   const handleJoin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (code.length === 6) {
-      router.push(`/e/${code}`);
+      router.push(`/e/${code.toLowerCase()}`);
     }
   };
 
@@ -22,13 +22,13 @@ export default function ActionButtons() {
       try {
         const url = new URL(result);
         if (url.pathname.startsWith("/e/")) {
-          router.push(url.pathname);
+          router.push(url.pathname.toLowerCase());
         } else if (result.length === 6) {
-          router.push(`/e/${result}`);
+          router.push(`/e/${result.toLowerCase()}`);
         }
       } catch (err) {
         if (result.length === 6) {
-          router.push(`/e/${result}`);
+          router.push(`/e/${result.toLowerCase()}`);
         }
       }
     }

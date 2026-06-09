@@ -34,6 +34,11 @@ export async function enhanceImage(
 
   return new Promise((resolve, reject) => {
     const img = new Image();
+    // Fix iOS Safari Canvas Tainting Bug: explicitly request CORS for remote images
+    if (typeof input === 'string' && input.startsWith('http')) {
+      img.crossOrigin = "anonymous";
+    }
+    
     img.onload = () => {
       if (input instanceof Blob) URL.revokeObjectURL(url);
 

@@ -68,7 +68,7 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  const generateShortCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+  const generateShortCode = () => Math.random().toString(36).substring(2, 8).toLowerCase();
 
   const handleNext = () => {
     if (step === 1 && !title.trim()) return;

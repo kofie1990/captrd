@@ -6,11 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 import CameraViewfinder from "@/components/CameraViewfinder";
 import { ArrowLeft, X as CloseIcon, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getFilterClass } from "@/lib/filters";
+import { getFilterClass, getCssFilter } from "@/lib/filters";
+import { enhanceImage } from "@/lib/enhanceImage";
 
 export default function EventPortal() {
   const params = useParams();
-  const eventId = params.id as string;
+  const eventId = params?.id as string;
   const supabase = createClient();
 
   const [eventData, setEventData] = useState<any>(null);
@@ -25,20 +26,20 @@ export default function EventPortal() {
   useEffect(() => {
     const fetchEvent = async () => {
       let query = supabase.from("events").select("*");
-      if (eventId.length === 36) {
+      if (eventId && eventId.length === 36) {
         query = query.eq("id", eventId);
-      } else {
-        query = query.eq("short_code", eventId);
+      } else if (eventId) {
+        query = query.eq("short_code", eventId.toLowerCase());
       }
 
-      const { data } = await query.single();
+      const { data } = await query.maybeSingle();
       if (data) {
         setEventData(data);
 
         // Fetch latest photo for thumbnail using the actual UUID
-        const { data: latestPhotoData } = await supabase.from("photos").select("storage_path").eq("event_id", data.id).order("created_at", { ascending: false }).limit(1).single();
-        if (latestPhotoData) {
-          setLatestPhoto(latestPhotoData.storage_path);
+        const { data: latestPhotoData } = await supabase.from("photos").select("storage_path").eq("event_id", data.id).order("created_at", { ascending: false }).limit(1);
+        if (latestPhotoData && latestPhotoData.length > 0) {
+          setLatestPhoto(latestPhotoData[0].storage_path);
         }
       }
 
@@ -91,22 +92,22 @@ export default function EventPortal() {
     return (
       <main className="fixed inset-0 bg-black text-white flex flex-col justify-end">
         {/* Background Image (Cover Photo) */}
-        <div 
+        <div
           className="absolute inset-0 z-0 bg-cover bg-center opacity-80"
           style={{ backgroundImage: `url(${eventData.cover_photo_url || "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=800&auto=format&fit=crop"})` }}
         />
-        
+
         {/* Dark Gradients for Text Readability */}
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/40 via-transparent to-black/95 pointer-events-none" />
 
         {/* Content Area */}
         <div className="relative z-10 w-full p-6 md:p-12 flex flex-col items-center text-center pb-12 animate-in slide-in-from-bottom-8 duration-1000 fade-in">
-          
+
           {/* Event Title */}
           <h1 className="font-serif text-5xl md:text-7xl mb-4 drop-shadow-lg tracking-tight leading-tight max-w-[90%]">
             {eventData.title}
           </h1>
-          
+
           {/* Event Date */}
           <p className="font-mono text-xs md:text-sm uppercase tracking-[0.3em] opacity-80 mb-8 drop-shadow-md">
             {new Date(eventData.reveal_at).toLocaleDateString()}
@@ -131,8 +132,8 @@ export default function EventPortal() {
                 className="w-full bg-black/40 backdrop-blur-xl border border-white/20 rounded-[2rem] py-5 px-6 text-center focus:outline-none focus:border-white text-lg font-serif transition-colors shadow-2xl placeholder:text-white/40"
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="w-full bg-white text-black py-5 rounded-[2rem] font-mono font-bold uppercase tracking-widest text-xs shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               Join Film Roll
@@ -219,8 +220,22 @@ function FilmRollGallery({ eventData, onViewCamera }: { eventData: any; onViewCa
 
   const handleShare = async (mediaUrl: string, type: string) => {
     try {
-      const response = await fetch(mediaUrl);
-      const blob = await response.blob();
+      let blob: Blob;
+      
+      if (type !== 'video' && eventData.aesthetic_filter) {
+        try {
+          // Pass mediaUrl directly to prevent Safari blob: URL canvas tainting bug
+          blob = await enhanceImage(mediaUrl, { cssFilter: getCssFilter(eventData.aesthetic_filter) });
+        } catch (e) { 
+          console.error("Filter bake failed", e);
+          const response = await fetch(mediaUrl);
+          blob = await response.blob();
+        }
+      } else {
+        const response = await fetch(mediaUrl);
+        blob = await response.blob();
+      }
+
       const ext = type === 'video' ? 'mp4' : 'jpg';
       const file = new File([blob], `captrd-moment.${ext}`, { type: blob.type });
 
@@ -245,8 +260,22 @@ function FilmRollGallery({ eventData, onViewCamera }: { eventData: any; onViewCa
 
   const handleDownload = async (mediaUrl: string, type: string) => {
     try {
-      const response = await fetch(mediaUrl);
-      const blob = await response.blob();
+      let blob: Blob;
+      
+      if (type !== 'video' && eventData.aesthetic_filter) {
+        try {
+          // Pass mediaUrl directly to prevent Safari blob: URL canvas tainting bug
+          blob = await enhanceImage(mediaUrl, { cssFilter: getCssFilter(eventData.aesthetic_filter) });
+        } catch (e) { 
+          console.error("Filter bake failed", e);
+          const response = await fetch(mediaUrl);
+          blob = await response.blob();
+        }
+      } else {
+        const response = await fetch(mediaUrl);
+        blob = await response.blob();
+      }
+      
       const url = URL.createObjectURL(blob);
       const ext = type === 'video' ? 'mp4' : 'jpg';
       const a = document.createElement('a');
@@ -328,7 +357,7 @@ function FilmRollGallery({ eventData, onViewCamera }: { eventData: any; onViewCa
                 {photo.media_type === 'video' ? (
                   <video src={photo.storage_path} className={`w-full h-auto object-cover ${getFilterClass(eventData.aesthetic_filter)} lg:group-hover:scale-[1.02] transition-transform duration-700 ease-out`} muted loop autoPlay playsInline />
                 ) : (
-                  <img src={photo.storage_path} alt="Captured moment" className={`w-full h-auto object-cover ${getFilterClass(eventData.aesthetic_filter)} lg:group-hover:scale-[1.02] transition-transform duration-700 ease-out`} />
+                  <img src={photo.storage_path} alt="Captrd moment" className={`w-full h-auto object-cover ${getFilterClass(eventData.aesthetic_filter)} lg:group-hover:scale-[1.02] transition-transform duration-700 ease-out`} />
                 )}
 
                 {/* Clean Overlay without background box, always visible on mobile, hover on desktop */}
