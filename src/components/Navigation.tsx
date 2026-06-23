@@ -2,9 +2,11 @@
 
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { Camera, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import Lottie from "lottie-react";
+import logoAnimation from "../../public/logo.json";
 
 export default function Navigation() {
   const { scrollY } = useScroll();
@@ -42,8 +44,15 @@ export default function Navigation() {
         )}
       >
         <div className="w-full mx-auto flex justify-between items-center max-w-[2000px]">
-          <Link href="/" className="flex items-center gap-3 group z-50" onClick={() => setMenuOpen(false)}>
-            <Camera className="w-6 h-6 text-white group-hover:opacity-70 transition-opacity" />
+          <Link href="/" className="flex items-center gap-2 group z-50" onClick={() => setMenuOpen(false)}>
+            <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center opacity-90 group-hover:opacity-70 transition-opacity translate-y-0.5">
+              <Lottie 
+                animationData={logoAnimation} 
+                loop={false} 
+                autoplay={true}
+                initialSegment={[0, 360]}
+              />
+            </div>
             <span className="font-serif text-2xl md:text-3xl tracking-tighter text-white">
               captrd.
             </span>

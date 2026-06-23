@@ -27,7 +27,7 @@ export default function Home() {
           <p className="text-xl text-white/50 mb-12 font-light">
             Start your event in seconds. No app required.
           </p>
-          <Link href="/studio" className="group relative inline-flex h-16 items-center justify-center overflow-hidden rounded-full bg-white px-10 font-medium text-black transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_8px_rgba(255,255,255,0.2)]">
+          <Link href="/dashboard/create" className="group relative inline-flex h-16 items-center justify-center overflow-hidden rounded-full bg-white px-10 font-medium text-black transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_8px_rgba(255,255,255,0.2)]">
             <span className="font-mono text-base tracking-widest uppercase">Create Event</span>
             <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Link>

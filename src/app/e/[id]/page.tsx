@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import CameraViewfinder from "@/components/CameraViewfinder";
 import { ArrowLeft, X as CloseIcon, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getFilterClass, getCssFilter } from "@/lib/filters";
+import { getFilterClass, getPixelFilter } from "@/lib/filters";
 import { enhanceImage } from "@/lib/enhanceImage";
 
 export default function EventPortal() {
@@ -81,11 +81,19 @@ export default function EventPortal() {
 
   // Camera Mode (or Guestbook if no name)
   if (!hasEnteredName) {
-    const handleNameSubmit = (e: React.FormEvent) => {
+    const handleNameSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (guestName.trim()) {
         sessionStorage.setItem(`captrd_guest_${eventId}`, guestName);
         setHasEnteredName(true);
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from("event_participants").upsert({
+            user_id: session.user.id,
+            event_id: eventData.id
+          }, { onConflict: "user_id, event_id" });
+        }
       }
     };
 
@@ -225,7 +233,7 @@ function FilmRollGallery({ eventData, onViewCamera }: { eventData: any; onViewCa
       if (type !== 'video' && eventData.aesthetic_filter) {
         try {
           // Pass mediaUrl directly to prevent Safari blob: URL canvas tainting bug
-          blob = await enhanceImage(mediaUrl, { cssFilter: getCssFilter(eventData.aesthetic_filter) });
+          blob = await enhanceImage(mediaUrl, { pixelFilter: getPixelFilter(eventData.aesthetic_filter) });
         } catch (e) { 
           console.error("Filter bake failed", e);
           const response = await fetch(mediaUrl);
@@ -265,7 +273,7 @@ function FilmRollGallery({ eventData, onViewCamera }: { eventData: any; onViewCa
       if (type !== 'video' && eventData.aesthetic_filter) {
         try {
           // Pass mediaUrl directly to prevent Safari blob: URL canvas tainting bug
-          blob = await enhanceImage(mediaUrl, { cssFilter: getCssFilter(eventData.aesthetic_filter) });
+          blob = await enhanceImage(mediaUrl, { pixelFilter: getPixelFilter(eventData.aesthetic_filter) });
         } catch (e) { 
           console.error("Filter bake failed", e);
           const response = await fetch(mediaUrl);

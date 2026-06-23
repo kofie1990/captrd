@@ -3,7 +3,7 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { RefreshCcw, Check, X, Image as ImageIcon, Video as VideoIcon, Zap, ZapOff, Grid3x3, ZoomIn, ZoomOut, Loader2 } from "lucide-react";
-import { getFilterClass, getCssFilter, getFilterBloom } from "@/lib/filters";
+import { getFilterClass, getPixelFilter, getFilterBloom } from "@/lib/filters";
 import { enhanceImage } from "@/lib/enhanceImage";
 
 type Props = {
@@ -28,7 +28,7 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   
-  const [uploading, setUploading] = useState(false);
+  const [uploadQueueCount, setUploadQueueCount] = useState(0);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   
   // Camera Controls State
@@ -322,7 +322,7 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
       // Last-resort fallback: try canvas capture
       try {
         const fallbackBlob = await captureFromCanvas(track);
-        const processed = await enhanceImage(fallbackBlob, { mirror: isSelfie, cssFilter: getCssFilter(filter), bloom: getFilterBloom(filter) });
+        const processed = await enhanceImage(fallbackBlob, { mirror: isSelfie, pixelFilter: getPixelFilter(filter), bloom: getFilterBloom(filter) });
         const url = URL.createObjectURL(processed);
         setPreviewUrl(url);
         setCapturedBlob(processed);
@@ -406,27 +406,24 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
 
   const upload = async () => {
     if (!capturedBlob && !videoBlob) return;
-    setUploading(true);
-    try {
-      let fileToUpload: Blob;
-      let ext: string;
-      let mediaType = 'image';
+    
+    // Capture state before retake clears it
+    const fileToUpload = (videoBlob || capturedBlob) as Blob;
+    const isVideo = !!videoBlob;
+    const ext = isVideo ? 'mp4' : 'jpg';
+    const mediaType = isVideo ? 'video' : 'image';
+    
+    setUploadQueueCount(prev => prev + 1);
+    
+    // Immediately clear preview to allow taking more photos
+    retake();
 
-      if (videoBlob) {
-        fileToUpload = videoBlob;
-        ext = 'mp4';
-        mediaType = 'video';
-      } else {
-        // Upload the enhanced full-resolution blob directly — no re-encoding
-        fileToUpload = capturedBlob!;
-        ext = 'jpg';
-      }
-      
+    try {
       const fileName = `${eventId}/${Date.now()}-${guestName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("event-photos")
-        .upload(fileName, fileToUpload, { contentType: videoBlob ? "video/mp4" : "image/jpeg" });
+        .upload(fileName, fileToUpload, { contentType: isVideo ? "video/mp4" : "image/jpeg" });
         
       if (uploadError) throw uploadError;
 
@@ -441,21 +438,21 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
 
       if (dbError) throw dbError;
 
-      // Update limits
-      const newCount = photosTaken + 1;
-      setPhotosTaken(newCount);
-      sessionStorage.setItem(`captr_count_${eventId}`, newCount.toString());
+      // Update limits with functional updater
+      setPhotosTaken(prev => {
+        const newCount = prev + 1;
+        sessionStorage.setItem(`captr_count_${eventId}`, newCount.toString());
+        return newCount;
+      });
 
       if (onPhotoTaken) {
         onPhotoTaken(publicUrlData.publicUrl);
       }
-
-      retake();
     } catch (e) {
       console.error(e);
       alert("Failed to upload media. Please try again.");
     } finally {
-      setUploading(false);
+      setUploadQueueCount(prev => prev - 1);
     }
   };
 
@@ -465,6 +462,12 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
   return (
     <div className={`${isEmbedded ? 'absolute' : 'fixed'} inset-0 bg-black z-[100] flex flex-col justify-between overflow-hidden select-none`}>
       {/* Top Bar */}
+      {uploadQueueCount > 0 && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 z-50 text-white font-mono text-xs shadow-xl border border-white/10">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          <span>Uploading {uploadQueueCount} item{uploadQueueCount !== 1 ? 's' : ''}...</span>
+        </div>
+      )}
       <div className="absolute top-0 inset-x-0 p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/60 to-transparent pb-16">
         <div className="flex flex-col">
           <span className="font-mono text-xs uppercase tracking-widest text-white/70">{guestName}&apos;s Roll</span>
@@ -615,7 +618,11 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
               className={`w-full h-full rounded-xl overflow-hidden border-2 border-white/20 transition-transform group relative bg-[#222] ${isRevealed ? 'active:scale-95 cursor-pointer' : 'cursor-default'}`}
             >
                {latestPhotoUrl ? (
-                 <img src={latestPhotoUrl} alt="Gallery Preview" className={`w-full h-full object-cover ${getFilterClass(filter)} ${isRevealed ? 'group-hover:scale-110' : ''} transition-transform`} />
+                 latestPhotoUrl.includes('.mp4') ? (
+                   <video src={latestPhotoUrl} className={`w-full h-full object-cover ${getFilterClass(filter)} ${isRevealed ? 'group-hover:scale-110' : ''} transition-transform`} autoPlay muted playsInline loop />
+                 ) : (
+                   <img src={latestPhotoUrl} alt="Gallery Preview" className={`w-full h-full object-cover ${getFilterClass(filter)} ${isRevealed ? 'group-hover:scale-110' : ''} transition-transform`} />
+                 )
                ) : (
                  <div className="w-full h-full flex items-center justify-center group-hover:bg-[#333] transition-colors">
                     <ImageIcon className="w-6 h-6 opacity-40" />
@@ -656,11 +663,11 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
           </div>
         ) : (
           <div className="absolute left-1/2 -translate-x-1/2 flex gap-6 md:gap-8">
-            <button onClick={retake} disabled={uploading} className="p-4 md:p-5 bg-white/10 backdrop-blur-md rounded-full text-white disabled:opacity-50 hover:bg-red-500/80 transition-colors shadow-lg">
+            <button onClick={retake} className="p-4 md:p-5 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-red-500/80 transition-colors shadow-lg">
               <X className="w-6 h-6 md:w-8 md:h-8" />
             </button>
-            <button onClick={upload} disabled={uploading} className="p-4 md:p-5 bg-white text-black rounded-full disabled:opacity-50 flex items-center justify-center hover:bg-gray-200 transition-colors shadow-xl">
-              {uploading ? <span className="font-mono text-[10px] md:text-xs tracking-widest px-2 font-bold">SAVING</span> : <Check className="w-6 h-6 md:w-8 md:h-8" />}
+            <button onClick={upload} className="p-4 md:p-5 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors shadow-xl">
+              <Check className="w-6 h-6 md:w-8 md:h-8" />
             </button>
           </div>
         )}

@@ -17,6 +17,8 @@ type Event = {
 
 export default function Dashboard() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [joinedEvents, setJoinedEvents] = useState<Event[]>([]);
+  const [activeTab, setActiveTab] = useState<"created" | "joined">("created");
   const [totalPhotos, setTotalPhotos] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -54,6 +56,18 @@ export default function Dashboard() {
           if (count) setTotalPhotos(count);
         }
       }
+
+      const { data: joinedData } = await supabase
+        .from("event_participants")
+        .select("events(*)")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      if (joinedData) {
+        const mappedJoined = joinedData.map((d: any) => d.events).filter(Boolean);
+        setJoinedEvents(mappedJoined);
+      }
+
       setLoading(false);
     };
 
@@ -134,7 +148,20 @@ export default function Dashboard() {
       <div className="w-full max-w-[1600px] mx-auto">
         <div className="w-full">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="font-serif text-3xl">Your Rolls</h2>
+            <div className="flex items-center gap-6">
+              <button 
+                onClick={() => setActiveTab("created")}
+                className={`font-serif text-2xl md:text-3xl transition-opacity ${activeTab === "created" ? "opacity-100" : "opacity-40 hover:opacity-70"}`}
+              >
+                Your Rolls
+              </button>
+              <button 
+                onClick={() => setActiveTab("joined")}
+                className={`font-serif text-2xl md:text-3xl transition-opacity ${activeTab === "joined" ? "opacity-100" : "opacity-40 hover:opacity-70"}`}
+              >
+                Joined
+              </button>
+            </div>
             <a href="/dashboard/create" className="bg-foreground/5 border border-foreground/10 text-foreground px-6 py-2.5 rounded-full font-mono font-bold uppercase tracking-widest text-[10px] md:text-xs hover:bg-foreground/10 active:scale-[0.98] transition-all flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
               <span className="hidden md:inline">Create Roll</span>
@@ -142,7 +169,7 @@ export default function Dashboard() {
             </a>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
-            {events.map((ev) => (
+            {(activeTab === "created" ? events : joinedEvents).map((ev) => (
               <div key={ev.id} className="relative aspect-[4/5] rounded-[3rem] overflow-hidden group shadow-2xl border border-foreground/10 bg-black">
                 {/* Background Cover Photo */}
                 <img
@@ -180,9 +207,11 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
-            {events.length === 0 && (
+            {(activeTab === "created" ? events : joinedEvents).length === 0 && (
               <div className="col-span-full py-24 text-center border border-dashed border-foreground/20 rounded-[3rem]">
-                <p className="opacity-50 italic font-serif text-2xl">No film rolls created yet.</p>
+                <p className="opacity-50 italic font-serif text-2xl">
+                  {activeTab === "created" ? "No film rolls created yet." : "You haven't joined any rolls yet."}
+                </p>
               </div>
             )}
           </div>

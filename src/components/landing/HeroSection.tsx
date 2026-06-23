@@ -1,12 +1,22 @@
 "use client";
 
-import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+const WORDS = ["the unseen", "the candid", "the raw", "the fleeting", "the moments", "the magic"];
+
 export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [wordIndex, setWordIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((prev) => (prev + 1) % WORDS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Parallax on scroll
   const { scrollYProgress } = useScroll({
@@ -61,10 +71,27 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="font-serif lg:mt-[-50px] mt-[-25px] text-[4.5rem] leading-[0.9] md:text-[6rem] lg:text-[7rem] tracking-tighter text-white drop-shadow-2xl mb-8"
+          className="font-serif lg:mt-[50px] mt-[-25px] text-[4.5rem] leading-[0.9] md:text-[6rem] lg:text-[7rem] tracking-tighter text-white drop-shadow-2xl mb-8"
         >
           captr <br />
-          <span className="italic font-light text-white/60">the unseen</span>
+          <span className="relative inline-grid place-items-center h-[1.0em] align-bottom">
+            {/* Invisible placeholder ensures container is perfectly wide enough for all words */}
+            <span className="invisible col-start-1 row-start-1 whitespace-nowrap italic font-light">
+              the moments
+            </span>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={wordIndex}
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: "0%", opacity: 1 }}
+                exit={{ y: "-100%", opacity: 0 }}
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                className="col-start-1 row-start-1 italic font-light text-white/60 whitespace-nowrap"
+              >
+                {WORDS[wordIndex]}
+              </motion.span>
+            </AnimatePresence>
+          </span>
         </motion.h1>
 
         <motion.p
@@ -82,7 +109,7 @@ export default function HeroSection() {
           transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col mt-[-20px] sm:flex-row gap-6 mb-8 items-center relative z-30"
         >
-          <Link href="/studio" className="group relative inline-flex h-14 items-center justify-center overflow-hidden rounded-full bg-white px-8 font-medium text-black transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_8px_rgba(255,255,255,0.2)]">
+          <Link href="/dashboard/create" className="group relative inline-flex h-14 items-center justify-center overflow-hidden rounded-full bg-white px-8 font-medium text-black transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_8px_rgba(255,255,255,0.2)]">
             <span className="font-mono text-sm tracking-widest uppercase">Create an Event</span>
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
@@ -114,14 +141,14 @@ export default function HeroSection() {
 
           {/* Left Phone: Camera Screen (Back) */}
           <motion.img
-            src="/birthday_gallary.png"
+            src="/party_gallary.png"
             alt="Gallery Demo"
             className="absolute w-[55%] sm:w-[45%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-0 cursor-crosshair"
             style={{
               x: "-35%",
               y: "5%",
               z: -40,
-              rotateZ: -10,
+              rotateZ: 0,
               filter: "brightness(0.6) contrast(1.1)"
             }}
             whileHover={{ scale: 1.05, filter: "brightness(1) contrast(1.1)", z: 10 }}
@@ -129,14 +156,14 @@ export default function HeroSection() {
 
           {/* Right Phone: Gallery (Front) */}
           <motion.img
-            src="/camerascreen.png"
+            src="/party_cam.png"
             alt="Camera Screen Demo"
             className="absolute w-[60%] sm:w-[50%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-10 cursor-pointer"
             style={{
               x: "25%",
               y: "-10%",
               z: 60,
-              rotateZ: 5
+              rotateZ: 0
             }}
             whileHover={{ scale: 1.05, z: 90 }}
           />
