@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import FilterSelector from "@/components/FilterSelector";
 import { QRCodeSVG } from "qrcode.react";
+import { LogOut } from "lucide-react";
 
 type Event = {
   id: string;
@@ -95,10 +95,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   if (loading) return null;
 
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col relative pt-8 md:pt-12 px-6 md:px-16 pb-20">
+      {/* Top Header Actions */}
+      <div className="absolute top-6 right-6 md:top-8 md:right-16 z-50">
+        <button 
+          onClick={handleSignOut}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-red-500/30 text-red-400 bg-red-500/5 hover:bg-red-500/15 hover:border-red-500/50 transition-all text-[10px] md:text-xs font-mono uppercase tracking-widest shadow-lg"
+        >
+          <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" /> 
+          <span>Sign Out</span>
+        </button>
+      </div>
+
       {/* Welcome Section */}
       <div className="w-full max-w-[1600px] mx-auto mt-8 md:mt-12 mb-6 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
@@ -111,7 +127,7 @@ export default function Dashboard() {
         </div>
 
         {/* Primary Action */}
-        <div className="w-full lg:w-auto mt-6 lg:mt-0">
+        <div className="w-full lg:w-auto mt-6 lg:mt-0 flex items-center gap-4">
           <a href="/dashboard/order" className="p-6 md:p-8 border border-foreground/20 bg-foreground/5 backdrop-blur-md rounded-[2rem] hover:bg-foreground/10 transition-colors group relative overflow-hidden flex flex-col justify-center min-w-[280px]">
             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:scale-110 transition-transform duration-500">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect width="12" height="8" x="6" y="14" /></svg>

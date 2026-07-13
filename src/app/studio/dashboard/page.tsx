@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, Settings, Image as ImageIcon, ExternalLink, MoreVertical, X } from "lucide-react";
+import { Plus, Settings, Image as ImageIcon, ExternalLink, MoreVertical, X, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navigation from "@/components/Navigation";
 import Link from "next/link";
@@ -30,10 +30,14 @@ export default function StudioDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [eventName, setEventName] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
     fetchData();
+    if (typeof window !== "undefined" && window.location.search.includes("onboarding=true")) {
+      setOnboardingStep(1);
+    }
   }, []);
 
   const fetchData = async () => {
@@ -41,6 +45,18 @@ export default function StudioDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         window.location.href = "/login";
+        return;
+      }
+
+      // Verify subscription
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_studio_subscriber")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!profile?.is_studio_subscriber) {
+        window.location.href = "/studio";
         return;
       }
 
@@ -139,6 +155,11 @@ export default function StudioDashboard() {
     }
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">Loading...</div>;
   }
@@ -190,6 +211,29 @@ export default function StudioDashboard() {
     );
   }
 
+  const ONBOARDING_STEPS = [
+    {
+      title: "Welcome to Captrd Studio! 📸",
+      description: "We are thrilled to have you here! Let's get you set up to share pristine, high-resolution galleries with your clients in just a few steps.",
+      actionText: "Let's Go"
+    },
+    {
+      title: "Step 1: Setup Studio Profile 🏢",
+      description: "If you haven't yet, specify your business name and slug. Your slug creates your custom gallery hub URL (e.g. captrd.live/g/your-slug). All public galleries will live here.",
+      actionText: "Next Step"
+    },
+    {
+      title: "Step 2: Create a Gallery 📂",
+      description: "Click the 'New Gallery' button on the dashboard to create a new client project (e.g., 'John & Sarah Wedding'). You can upload hundreds of high-res photos.",
+      actionText: "Next Step"
+    },
+    {
+      title: "Step 3: Easy Client Downloads 🚀",
+      description: "Clients can view and download high-resolution versions of your work instantly without compressed qualities or having to create a Captrd account.",
+      actionText: "Got it, Finish!"
+    }
+  ];
+
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col relative pt-24 px-6 md:px-16 pb-20">
       <Navigation />
@@ -208,12 +252,20 @@ export default function StudioDashboard() {
         </div>
         
         <div className="flex items-center gap-4">
+          <button 
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-red-500/30 text-red-400 bg-red-500/5 hover:bg-red-500/15 hover:border-red-500/50 transition-all font-mono text-[10px] md:text-xs uppercase tracking-widest"
+            title="Sign Out"
+          >
+            <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" /> 
+            <span className="hidden md:inline">Sign Out</span>
+          </button>
           <button className="w-12 h-12 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground/5 transition-colors">
             <Settings className="w-5 h-5 opacity-70" />
           </button>
           <button 
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-foreground text-background px-6 py-3 rounded-full hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="flex items-center gap-2 bg-foreground text-background px-6 py-3 rounded-full hover:scale-[1.02] active:scale-[0.98] transition-all font-onboarding-btn"
           >
             <Plus className="w-4 h-4" />
             <span className="font-mono text-xs uppercase tracking-widest font-bold">New Gallery</span>
@@ -326,6 +378,74 @@ export default function StudioDashboard() {
                   {creatingEvent ? "Creating..." : "Create Gallery"}
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Onboarding Wizard Overlay */}
+      <AnimatePresence>
+        {onboardingStep !== null && (
+          <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full p-[1px] rounded-[2rem] bg-gradient-to-r from-foreground/10 to-foreground/5 shadow-2xl backdrop-blur-xl border border-foreground/10">
+            <motion.div 
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="bg-background/95 rounded-[2rem] p-6 text-foreground border border-foreground/5"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <span className="font-mono text-[10px] uppercase tracking-widest opacity-50">
+                  Step {onboardingStep} of {ONBOARDING_STEPS.length}
+                </span>
+                <button 
+                  onClick={() => setOnboardingStep(null)}
+                  className="p-1 rounded-full hover:bg-foreground/10 opacity-50 hover:opacity-100 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <h4 className="font-serif text-xl mb-2">
+                {ONBOARDING_STEPS[onboardingStep - 1].title}
+              </h4>
+              <p className="text-xs opacity-70 leading-relaxed mb-6 font-sans">
+                {ONBOARDING_STEPS[onboardingStep - 1].description}
+              </p>
+
+              <div className="flex justify-between items-center gap-4">
+                {onboardingStep > 1 ? (
+                  <button 
+                    onClick={() => setOnboardingStep(prev => prev ? prev - 1 : null)}
+                    className="font-mono text-[10px] uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
+                  >
+                    Back
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setOnboardingStep(null)}
+                    className="font-mono text-[10px] uppercase tracking-widest opacity-30 hover:opacity-65 transition-opacity"
+                  >
+                    Skip Tour
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => {
+                    if (onboardingStep === ONBOARDING_STEPS.length) {
+                      setOnboardingStep(null);
+                      // Clear query param so it doesn't reopen on refresh
+                      const url = new URL(window.location.href);
+                      url.searchParams.delete('onboarding');
+                      window.history.replaceState({}, '', url.toString());
+                    } else {
+                      setOnboardingStep(prev => prev ? prev + 1 : null);
+                    }
+                  }}
+                  className="px-6 py-2.5 bg-foreground text-background font-medium tracking-widest text-[10px] uppercase rounded-full hover:scale-105 active:scale-[0.98] transition-all"
+                >
+                  {ONBOARDING_STEPS[onboardingStep - 1].actionText}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

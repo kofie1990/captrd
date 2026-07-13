@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { ArrowRight, ArrowLeft, CheckCircle2, Upload, Sparkles, Image as ImageIcon, Edit3, X } from "lucide-react";
+import { usePaystackPayment } from 'react-paystack';
 import CustomDatePicker from "./CustomDatePicker";
 import CustomTimePicker from "./CustomTimePicker";
 import CustomDropdown from "./CustomDropdown";
@@ -11,18 +12,19 @@ import FilterSelector from "./FilterSelector";
 
 type Props = {
   userId: string;
+  userEmail: string;
   onEventCreated: (event: any) => void;
 };
 
 const GUEST_TIERS = [
   { guests: 3, price: 0, maxPhotos: 5 },
-  { guests: 5, price: 10, maxPhotos: 15 },
-  { guests: 10, price: 20, maxPhotos: 20 },
-  { guests: 15, price: 30, maxPhotos: 25 },
-  { guests: 20, price: 40, maxPhotos: 30 },
+  { guests: 5, price: 20, maxPhotos: 15 },
+  { guests: 10, price: 30, maxPhotos: 20 },
+  { guests: 15, price: 40, maxPhotos: 25 },
+  { guests: 20, price: 50, maxPhotos: 30 },
   { guests: 30, price: 60, maxPhotos: 35 },
-  { guests: 50, price: 100, maxPhotos: 40 },
-  { guests: 100, price: 150, maxPhotos: 50 },
+  { guests: 50, price: 70, maxPhotos: 40 },
+  { guests: 100, price: 80, maxPhotos: 50 },
 ];
 
 const PRESET_COVERS = [
@@ -32,7 +34,7 @@ const PRESET_COVERS = [
   "https://images.unsplash.com/photo-1533105079780-92b9be482077?q=90&w=1200&auto=format&fit=crop", // Event/Social
 ];
 
-export default function CreateEventWizard({ userId, onEventCreated }: Props) {
+export default function CreateEventWizard({ userId, userEmail, onEventCreated }: Props) {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,7 +74,77 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  const generateShortCode = () => Math.random().toString(36).substring(2, 8).toLowerCase();
+  // Paystack fee in Ghana is 1.95%. To pass fee to customer: amount = original / (1 - 0.0195)
+  const baseAmountInPesewas = selectedTier.price * 100;
+  const amountWithFee = baseAmountInPesewas > 0 ? Math.ceil(baseAmountInPesewas / 0.9805) : 0;
+
+  // Pre-compute event data for webhook metadata
+  let finalRevealAtStr = new Date().toISOString();
+  if (revealOption === "custom" && customRevealDate && customRevealTime) {
+    const finalDate = new Date(customRevealDate);
+    finalDate.setHours(customRevealTime.getHours(), customRevealTime.getMinutes(), 0, 0);
+    finalRevealAtStr = finalDate.toISOString();
+  } else if (eventDate) {
+    const date = new Date(eventDate.getTime());
+    if (revealOption === "instantly") {
+      finalRevealAtStr = date.toISOString();
+    } else if (revealOption === "next_day") {
+      date.setDate(date.getDate() + 1);
+      date.setHours(9, 0, 0, 0);
+      finalRevealAtStr = date.toISOString();
+    }
+  }
+
+  let finalCoverUrl = selectedPreset;
+  if (coverType === "upload" && uploadedImagePreview) {
+    finalCoverUrl = uploadedImagePreview;
+  }
+
+  let finalEndAtStr = new Date().toISOString();
+  if (endOption === "custom" && customEndDate && customEndTime) {
+    const finalEndDate = new Date(customEndDate);
+    finalEndDate.setHours(customEndTime.getHours(), customEndTime.getMinutes(), 0, 0);
+    finalEndAtStr = finalEndDate.toISOString();
+  } else if (eventDate) {
+    const date = new Date(eventDate.getTime());
+    if (endOption === "24_hours") {
+      date.setDate(date.getDate() + 1);
+    } else if (endOption === "48_hours") {
+      date.setDate(date.getDate() + 2);
+    } else if (endOption === "1_week") {
+      date.setDate(date.getDate() + 7);
+    }
+    finalEndAtStr = date.toISOString();
+  }
+
+  const generatedShortCodeRef = useRef(Math.random().toString(36).substring(2, 8).toLowerCase());
+
+  const currentEventData = {
+    title,
+    reveal_at: finalRevealAtStr,
+    end_at: finalEndAtStr,
+    aesthetic_filter: filter,
+    admin_id: userId,
+    short_code: generatedShortCodeRef.current,
+    max_photos_per_user: selectedTier.guests === 3 ? 5 : customMaxPhotos,
+    cover_photo_url: finalCoverUrl,
+    max_guests: selectedTier.guests,
+    invite_details: inviteDetails,
+  };
+
+  const paystackConfig = {
+    reference: `evnt_${new Date().getTime()}`,
+    email: userEmail || "payment@captrd.live",
+    amount: amountWithFee,
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+    currency: 'GHS',
+    metadata: {
+      action: "create_event",
+      eventData: currentEventData,
+      custom_fields: []
+    }
+  };
+  const initializePayment = usePaystackPayment(paystackConfig);
 
   const handleNext = () => {
     if (step === 1 && !title.trim()) return;
@@ -101,70 +173,54 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    let finalRevealAtStr = new Date().toISOString();
-
-    if (revealOption === "custom" && customRevealDate && customRevealTime) {
-      const finalDate = new Date(customRevealDate);
-      finalDate.setHours(customRevealTime.getHours(), customRevealTime.getMinutes(), 0, 0);
-      finalRevealAtStr = finalDate.toISOString();
-    } else if (eventDate) {
-      const date = new Date(eventDate.getTime());
-      if (revealOption === "instantly") {
-        finalRevealAtStr = date.toISOString();
-      } else if (revealOption === "next_day") {
-        date.setDate(date.getDate() + 1);
-        date.setHours(9, 0, 0, 0);
-        finalRevealAtStr = date.toISOString();
-      }
-    }
-
-    let finalCoverUrl = selectedPreset;
-    if (coverType === "upload" && uploadedFile) {
+    const createEventInSupabase = async (paymentRef?: string) => {
       // NOTE: For a real production app, upload `uploadedFile` to Supabase Storage here.
-      // e.g. await supabase.storage.from('covers').upload(...)
       // We will fallback to the local blob preview URL for now or if upload fails.
-      finalCoverUrl = uploadedImagePreview || selectedPreset;
-    }
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const response = await fetch('/api/payments/verify-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            reference: paymentRef,
+            eventData: currentEventData,
+            isFreeTier: selectedTier.price === 0
+          })
+        });
 
-    let finalEndAtStr = new Date().toISOString();
-    if (endOption === "custom" && customEndDate && customEndTime) {
-      const finalEndDate = new Date(customEndDate);
-      finalEndDate.setHours(customEndTime.getHours(), customEndTime.getMinutes(), 0, 0);
-      finalEndAtStr = finalEndDate.toISOString();
-    } else if (eventDate) {
-      const date = new Date(eventDate.getTime());
-      if (endOption === "24_hours") {
-        date.setDate(date.getDate() + 1);
-      } else if (endOption === "48_hours") {
-        date.setDate(date.getDate() + 2);
-      } else if (endOption === "1_week") {
-        date.setDate(date.getDate() + 7);
+        const result = await response.json();
+
+        if (result.success) {
+          setCreatedEvent(result.data);
+          setStep(8);
+        } else {
+          console.error("Failed to verify and create event:", result.error);
+          alert(`Could not verify payment or publish event: ${result.error}`);
+        }
+      } catch (err) {
+        console.error("Network error:", err);
+        alert("A network error occurred while publishing the event.");
       }
-      finalEndAtStr = date.toISOString();
-    }
+      setIsSubmitting(false);
+    };
 
-    const { data, error } = await supabase
-      .from("events")
-      .insert([{
-        title,
-        reveal_at: finalRevealAtStr,
-        end_at: finalEndAtStr,
-        aesthetic_filter: filter,
-        admin_id: userId,
-        short_code: generateShortCode(),
-        max_photos_per_user: selectedTier.guests === 3 ? 5 : customMaxPhotos,
-        cover_photo_url: finalCoverUrl,
-        max_guests: selectedTier.guests,
-        invite_details: inviteDetails
-      }])
-      .select()
-      .single();
-
-    if (!error && data) {
-      setCreatedEvent(data);
-      setStep(8);
+    if (selectedTier.price > 0) {
+      initializePayment({
+        onSuccess: (reference: any) => {
+          createEventInSupabase(reference.reference);
+        },
+        onClose: () => {
+          setIsSubmitting(false);
+        }
+      });
+    } else {
+      createEventInSupabase();
     }
-    setIsSubmitting(false);
   };
 
   const variants = {
@@ -390,7 +446,7 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
                     </p>
                   </div>
                   <div className="font-serif text-3xl">
-                    {selectedTier.price === 0 ? "Free" : `$${selectedTier.price}`}
+                    {selectedTier.price === 0 ? "Free" : `GH₵ ${selectedTier.price}`}
                   </div>
                 </div>
 
@@ -403,15 +459,31 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
                       Locked to 5 photos for the free tier.
                     </p>
                   ) : (
-                    <input
-                      required
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={customMaxPhotos}
-                      onChange={e => setCustomMaxPhotos(Number(e.target.value))}
-                      className="w-full bg-transparent border-b border-foreground/20 py-2 focus:outline-none focus:border-foreground transition-colors text-lg"
-                    />
+                    <div className="relative">
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        max={selectedTier.maxPhotos}
+                        value={customMaxPhotos || ""}
+                        onChange={e => {
+                          if (e.target.value === "") {
+                            setCustomMaxPhotos(0);
+                            return;
+                          }
+                          let val = Number(e.target.value);
+                          if (val > selectedTier.maxPhotos) val = selectedTier.maxPhotos;
+                          setCustomMaxPhotos(val);
+                        }}
+                        onBlur={() => {
+                          if (!customMaxPhotos || customMaxPhotos < 1) setCustomMaxPhotos(1);
+                        }}
+                        className="w-full bg-transparent border-b border-foreground/20 py-2 pr-24 focus:outline-none focus:border-foreground transition-colors text-lg"
+                      />
+                      <p className="absolute right-0 top-3 font-mono text-[10px] opacity-50 uppercase tracking-widest pointer-events-none">
+                        Max allowed: {selectedTier.maxPhotos}
+                      </p>
+                    </div>
                   )}
                 </div>
               </motion.div>

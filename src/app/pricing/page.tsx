@@ -1,24 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
 export default function PricingPage() {
   const eventTiers = [
     { guests: 3, price: 0, desc: "Trial Tier", maxPhotos: 5 },
-    { guests: 5, price: 10, desc: "Intimate Gathering", maxPhotos: 15 },
-    { guests: 10, price: 20, desc: "Small Party", maxPhotos: 20 },
-    { guests: 15, price: 30, desc: "Dinner Party", maxPhotos: 25 },
-    { guests: 20, price: 40, desc: "Get Together", maxPhotos: 30 },
+    { guests: 5, price: 20, desc: "Intimate Gathering", maxPhotos: 15 },
+    { guests: 10, price: 30, desc: "Small Party", maxPhotos: 20 },
+    { guests: 15, price: 40, desc: "Dinner Party", maxPhotos: 25 },
+    { guests: 20, price: 50, desc: "Get Together", maxPhotos: 30 },
     { guests: 30, price: 60, desc: "Celebration", maxPhotos: 35 },
-    { guests: 50, price: 100, desc: "Large Event", maxPhotos: 40 },
-    { guests: 100, price: 150, desc: "Wedding / Gala", maxPhotos: 50 },
+    { guests: 50, price: 70, desc: "Large Event", maxPhotos: 40 },
+    { guests: 100, price: 80, desc: "Wedding / Gala", maxPhotos: 50 },
   ];
 
   const [selectedIdx, setSelectedIdx] = useState(0);
   const selectedTier = eventTiers[selectedIdx];
+  const [studioLink, setStudioLink] = useState("/studio");
+  const supabase = createClient();
+
+  useEffect(() => {
+    const checkUserSubscription = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("is_studio_subscriber")
+          .eq("id", session.user.id)
+          .single();
+
+        if (data?.is_studio_subscriber) {
+          setStudioLink("/studio/dashboard");
+        }
+      }
+    };
+    checkUserSubscription();
+  }, [supabase]);
 
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col relative selection:bg-foreground selection:text-background pb-32 overflow-hidden">
@@ -103,7 +124,7 @@ export default function PricingPage() {
                     transition={{ duration: 0.4 }}
                     className="font-serif text-6xl md:text-7xl tracking-tighter"
                   >
-                    {selectedTier.price === 0 ? 'Free' : `$${selectedTier.price}`}
+                    {selectedTier.price === 0 ? 'Free' : `GH₵ ${selectedTier.price}`}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -135,15 +156,15 @@ export default function PricingPage() {
           <div className="flex-1 relative z-10">
             <h3 className="font-mono text-sm tracking-widest uppercase opacity-60 mb-2">Pro Photographer</h3>
             <div className="flex items-baseline gap-2 mb-6">
-              <span className="font-serif text-6xl tracking-tighter">$29</span>
+              <span className="font-serif text-6xl tracking-tighter">GH₵ 59</span>
               <span className="opacity-60 text-sm">/ month</span>
             </div>
             <p className="text-sm opacity-80 mb-8 leading-relaxed">
               Everything a professional photographer needs to host high-res event photos and provide easy downloads for users.
             </p>
-            <button className="w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-              Subscribe to Studio
-            </button>
+            <a href={studioLink} className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+              {studioLink === "/studio/dashboard" ? "Go to Dashboard" : "Subscribe to Studio"}
+            </a>
           </div>
           
           <div className="flex-1 flex flex-col justify-center relative z-10">

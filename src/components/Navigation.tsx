@@ -1,18 +1,39 @@
 "use client";
 
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Lottie from "lottie-react";
 import logoAnimation from "../../public/logo.json";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Navigation() {
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [studioLink, setStudioLink] = useState("/studio");
+  const supabase = createClient();
+
+  useEffect(() => {
+    const checkUserSubscription = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("is_studio_subscriber")
+          .eq("id", session.user.id)
+          .single();
+
+        if (data?.is_studio_subscriber) {
+          setStudioLink("/studio/dashboard");
+        }
+      }
+    };
+    checkUserSubscription();
+  }, [supabase]);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious() ?? 0;
@@ -60,7 +81,7 @@ export default function Navigation() {
 
           {/* Desktop Links */}
           <div className="hidden md:flex gap-12 text-xs font-mono tracking-[0.2em] uppercase text-white/70">
-            <Link href="/studio" className="hover:text-white transition-colors duration-300">Studio</Link>
+            <Link href={studioLink} className="hover:text-white transition-colors duration-300">Studio</Link>
             <Link href="/pricing" className="hover:text-white transition-colors duration-300">Pricing</Link>
             <Link href="/login" className="hover:text-white transition-colors duration-300">Sign In</Link>
           </div>
@@ -87,7 +108,7 @@ export default function Navigation() {
             className="fixed inset-0 z-40 bg-black/90 flex flex-col items-center justify-center"
           >
             <div className="flex flex-col gap-12 text-4xl font-serif tracking-wide text-center text-white">
-              <Link href="/studio" onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Studio</Link>
+              <Link href={studioLink} onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Studio</Link>
               <Link href="/pricing" onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Pricing</Link>
               <Link href="/login" onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Sign In</Link>
             </div>

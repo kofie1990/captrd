@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Navigation from "@/components/Navigation";
-import CreateEventWizard from "@/components/CreateEventWizard";
+import dynamic from "next/dynamic";
+
+const CreateEventWizard = dynamic(() => import("@/components/CreateEventWizard"), { ssr: false });
 
 export default function CreateEventPage() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
@@ -20,6 +23,7 @@ export default function CreateEventPage() {
         return;
       }
       setUserId(session.user.id);
+      setUserEmail(session.user.email || null);
       setLoading(false);
     };
 
@@ -45,7 +49,7 @@ export default function CreateEventPage() {
           &larr; Back to Dashboard
         </a>
         
-        <CreateEventWizard userId={userId || ""} onEventCreated={handleEventCreated} />
+        <CreateEventWizard userId={userId || ""} userEmail={userEmail || ""} onEventCreated={handleEventCreated} />
       </div>
     </main>
   );

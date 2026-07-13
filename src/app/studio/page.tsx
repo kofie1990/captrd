@@ -1,10 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Upload, Download, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { usePaystackPayment } from 'react-paystack';
+import { createClient } from "@/lib/supabase/client";
+import dynamic from "next/dynamic";
 
-export default function StudioPage() {
+function StudioPageContent() {
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -18,6 +22,76 @@ export default function StudioPage() {
   const itemVariants = {
     hidden: { opacity: 0, y: 30 },
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 50 } },
+  };
+
+  const [user, setUser] = useState<any>(null);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+  }, []);
+
+  // Paystack fee in Ghana is 1.95%. To pass fee to customer: amount = original / (1 - 0.0195)
+  const baseAmountInPesewas = 5900;
+  const amountWithFee = Math.ceil(baseAmountInPesewas / 0.9805);
+
+  const paystackConfig = {
+    reference: `sub_${new Date().getTime()}`,
+    email: user?.email || "subscriber@captrd.com",
+    amount: amountWithFee,
+    plan: process.env.NEXT_PUBLIC_PAYSTACK_STUDIO_PLAN_CODE || '',
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+    currency: 'GHS',
+    metadata: {
+      action: "studio_subscription",
+      userId: user?.id,
+      custom_fields: []
+    }
+  };
+
+  const initializePayment = usePaystackPayment(paystackConfig);
+
+  const handleSubscribe = () => {
+    if (!user) {
+      window.location.href = "/login?redirectTo=/studio";
+      return;
+    }
+    setIsSubscribing(true);
+    initializePayment({
+      onSuccess: async (reference: any) => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          const response = await fetch('/api/payments/verify-studio', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({ reference: reference.reference })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            window.location.href = "/studio/dashboard?onboarding=true";
+          } else {
+            console.error("Failed to verify subscription:", result.error);
+            alert(`Payment successful but we couldn't verify it: ${result.error}. Please contact support.`);
+          }
+        } catch (err) {
+          console.error("Network error:", err);
+          alert("A network error occurred while verifying the subscription.");
+        }
+        setIsSubscribing(false);
+      },
+      onClose: () => {
+        setIsSubscribing(false);
+      }
+    });
   };
 
   return (
@@ -142,13 +216,19 @@ export default function StudioPage() {
 
           <h3 className="font-serif text-4xl md:text-5xl mb-4 text-center">Start your Studio</h3>
           <p className="text-base opacity-60 mb-10 text-center font-light leading-relaxed">
-            Join Captrd Studio for $29/month to get unlimited high-resolution uploads and easy client delivery.
+            Join Captrd Studio for GH₵ 59/month to get unlimited high-resolution uploads and easy client delivery.
           </p>
-          <button className="px-12 py-5 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-            Subscribe Now
+          <button 
+            onClick={handleSubscribe}
+            disabled={isSubscribing}
+            className="px-12 py-5 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] disabled:opacity-50"
+          >
+            {isSubscribing ? "Processing..." : "Subscribe Now"}
           </button>
         </motion.div>
       </div>
     </main>
   );
 }
+
+export default dynamic(() => Promise.resolve(StudioPageContent), { ssr: false });
