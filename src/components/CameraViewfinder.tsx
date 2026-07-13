@@ -2,7 +2,8 @@
 
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { RefreshCcw, Check, X, Image as ImageIcon, Video as VideoIcon, Zap, ZapOff, Grid3x3, ZoomIn, ZoomOut, Loader2 } from "lucide-react";
+import { RefreshCcw, Check, X, Image as ImageIcon, Video as VideoIcon, Zap, ZapOff, Grid3x3, ZoomIn, ZoomOut, Loader2, UploadCloud } from "lucide-react";
+import { FailedUpload, saveFailedUpload, getFailedUploads, deleteFailedUpload } from "@/lib/failedUploads";
 import { getFilterClass, getPixelFilter, getFilterBloom } from "@/lib/filters";
 import { enhanceImage } from "@/lib/enhanceImage";
 
@@ -29,6 +30,12 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   
   const [uploadQueueCount, setUploadQueueCount] = useState(0);
+  const [pendingUploads, setPendingUploads] = useState<FailedUpload[]>([]);
+  
+  useEffect(() => {
+    getFailedUploads().then(uploads => setPendingUploads(uploads.filter(u => u.eventId === eventId)));
+  }, [eventId]);
+
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   
   // Camera Controls State
@@ -404,6 +411,53 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
     startCamera();
   }, [previewUrl, videoSrc, startCamera]);
 
+  const retryPendingUploads = async () => {
+    if (pendingUploads.length === 0) return;
+    
+    // Refresh session to avoid RLS/token expiration errors
+    await supabase.auth.getSession();
+
+    const currentPending = [...pendingUploads];
+    setPendingUploads([]); // Optimistically clear
+    let failedAgain: FailedUpload[] = [];
+
+    for (const item of currentPending) {
+       try {
+         setUploadQueueCount(prev => prev + 1);
+         const { error: uploadError } = await supabase.storage
+           .from("event-photos")
+           .upload(item.fileName, item.file, { contentType: item.isVideo ? "video/mp4" : "image/jpeg", upsert: true });
+           
+         if (uploadError) throw uploadError;
+
+         const { data: publicUrlData } = supabase.storage.from("event-photos").getPublicUrl(item.fileName);
+         
+         const { error: dbError } = await supabase.from("photos").insert([{
+           event_id: item.eventId,
+           guest_name: item.guestName,
+           storage_path: publicUrlData.publicUrl,
+           media_type: item.isVideo ? 'video' : 'image'
+         }]);
+
+         if (dbError) throw dbError;
+
+         await deleteFailedUpload(item.id);
+       } catch (e) {
+         console.error("Retry failed for", item.fileName, e);
+         failedAgain.push(item);
+       } finally {
+         setUploadQueueCount(prev => prev - 1);
+       }
+    }
+    
+    if (failedAgain.length > 0) {
+      setPendingUploads(failedAgain);
+      alert(`${failedAgain.length} uploads still failed. Please ensure you have a stable connection and try again.`);
+    } else {
+      alert("All failed uploads were successfully retried!");
+    }
+  };
+
   const upload = async () => {
     if (!capturedBlob && !videoBlob) return;
     
@@ -412,6 +466,7 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
     const isVideo = !!videoBlob;
     const ext = isVideo ? 'mp4' : 'jpg';
     const mediaType = isVideo ? 'video' : 'image';
+    const fileName = `${eventId}/${Date.now()}-${guestName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
     
     setUploadQueueCount(prev => prev + 1);
     
@@ -419,8 +474,9 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
     retake();
 
     try {
-      const fileName = `${eventId}/${Date.now()}-${guestName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
-      
+      // Ensure session is fresh before uploading
+      await supabase.auth.getSession();
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("event-photos")
         .upload(fileName, fileToUpload, { contentType: isVideo ? "video/mp4" : "image/jpeg" });
@@ -450,7 +506,18 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to upload media. Please try again.");
+      const failedItem: FailedUpload = {
+        id: fileName,
+        file: fileToUpload,
+        fileName,
+        eventId,
+        guestName,
+        isVideo,
+        timestamp: Date.now()
+      };
+      await saveFailedUpload(failedItem);
+      setPendingUploads(prev => [...prev, failedItem]);
+      alert("Upload failed due to connection issues. Your photo was saved locally and you can retry uploading later.");
     } finally {
       setUploadQueueCount(prev => prev - 1);
     }
@@ -467,6 +534,12 @@ export default function CameraViewfinder({ eventId, guestName, filter, isReveale
           <Loader2 className="w-3 h-3 animate-spin" />
           <span>Uploading {uploadQueueCount} item{uploadQueueCount !== 1 ? 's' : ''}...</span>
         </div>
+      )}
+      {pendingUploads.length > 0 && uploadQueueCount === 0 && (
+        <button onClick={retryPendingUploads} className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-500/80 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 z-50 text-white font-mono text-xs shadow-xl border border-red-500/50 hover:bg-red-500 transition-colors">
+          <UploadCloud className="w-3 h-3" />
+          <span>Retry {pendingUploads.length} Failed</span>
+        </button>
       )}
       <div className="absolute top-0 inset-x-0 p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/60 to-transparent pb-16">
         <div className="flex flex-col">

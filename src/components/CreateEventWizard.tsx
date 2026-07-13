@@ -45,6 +45,10 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
   const [customRevealDate, setCustomRevealDate] = useState<Date | null>(new Date());
   const [customRevealTime, setCustomRevealTime] = useState<Date | null>(new Date());
 
+  const [endOption, setEndOption] = useState("24_hours");
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(new Date());
+  const [customEndTime, setCustomEndTime] = useState<Date | null>(new Date());
+
   const [guestTierIdx, setGuestTierIdx] = useState(0);
   const selectedTier = GUEST_TIERS[guestTierIdx];
   const [customMaxPhotos, setCustomMaxPhotos] = useState(selectedTier.maxPhotos);
@@ -122,11 +126,29 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
       finalCoverUrl = uploadedImagePreview || selectedPreset;
     }
 
+    let finalEndAtStr = new Date().toISOString();
+    if (endOption === "custom" && customEndDate && customEndTime) {
+      const finalEndDate = new Date(customEndDate);
+      finalEndDate.setHours(customEndTime.getHours(), customEndTime.getMinutes(), 0, 0);
+      finalEndAtStr = finalEndDate.toISOString();
+    } else if (eventDate) {
+      const date = new Date(eventDate.getTime());
+      if (endOption === "24_hours") {
+        date.setDate(date.getDate() + 1);
+      } else if (endOption === "48_hours") {
+        date.setDate(date.getDate() + 2);
+      } else if (endOption === "1_week") {
+        date.setDate(date.getDate() + 7);
+      }
+      finalEndAtStr = date.toISOString();
+    }
+
     const { data, error } = await supabase
       .from("events")
       .insert([{
         title,
         reveal_at: finalRevealAtStr,
+        end_at: finalEndAtStr,
         aesthetic_filter: filter,
         admin_id: userId,
         short_code: generateShortCode(),
@@ -140,7 +162,7 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
 
     if (!error && data) {
       setCreatedEvent(data);
-      setStep(7);
+      setStep(8);
     }
     setIsSubmitting(false);
   };
@@ -164,11 +186,11 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
 
   return (
     <>
-      <div className={`p-8 md:p-10 glass rounded-[2rem] shadow-xl border border-foreground/5 relative min-h-[600px] flex flex-col ${step === 6 ? 'hidden' : 'block'}`}>
+      <div className={`p-8 md:p-10 glass rounded-[2rem] shadow-xl border border-foreground/5 relative min-h-[600px] flex flex-col ${step === 7 ? 'hidden' : 'block'}`}>
         <div className="flex justify-between items-center mb-8">
           <h2 className="font-serif text-3xl">New Film Roll</h2>
           <div className="font-mono text-xs opacity-50 uppercase tracking-widest">
-            Step {step} of 6
+            Step {step} of 7
           </div>
         </div>
 
@@ -275,8 +297,57 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
               </motion.div>
             )}
 
-            {/* STEP 4: GUEST LIMIT & PRICING */}
+            {/* STEP 4: EXPIRATION SETTINGS */}
             {step === 4 && (
+              <motion.div
+                key="step4"
+                custom={direction}
+                variants={variants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="flex flex-col gap-6 absolute inset-0"
+              >
+                <CustomDropdown
+                  label="When does the roll expire?"
+                  value={endOption}
+                  onChange={setEndOption}
+                  options={[
+                    { label: "24 Hours After Start", value: "24_hours" },
+                    { label: "48 Hours After Start", value: "48_hours" },
+                    { label: "1 Week After Start", value: "1_week" },
+                    { label: "Custom Date & Time...", value: "custom" }
+                  ]}
+                />
+
+                {endOption === "custom" && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="flex flex-col gap-6 pt-4 border-t border-white/10"
+                  >
+                    <CustomDatePicker
+                      label="End Date"
+                      selectedDate={customEndDate}
+                      onSelect={setCustomEndDate}
+                    />
+                    <CustomTimePicker
+                      label="End Time"
+                      selectedTime={customEndTime}
+                      onSelect={setCustomEndTime}
+                    />
+                  </motion.div>
+                )}
+                
+                <p className="opacity-40 text-sm font-serif mt-2">
+                  After this time, guests will no longer be able to take new photos.
+                </p>
+              </motion.div>
+            )}
+
+            {/* STEP 5: GUEST LIMIT & PRICING */}
+            {step === 5 && (
               <motion.div
                 key="step4"
                 custom={direction}
@@ -346,8 +417,8 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
               </motion.div>
             )}
 
-            {/* STEP 5: AESTHETIC FILTER */}
-            {step === 5 && (
+            {/* STEP 6: AESTHETIC FILTER */}
+            {step === 6 && (
               <motion.div
                 key="step5"
                 custom={direction}
@@ -372,7 +443,7 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
           </AnimatePresence>
         </div>
 
-        {/* BOTTOM NAV FOR STEPS 1-5 */}
+        {/* BOTTOM NAV FOR STEPS 1-6 */}
         <div className="flex justify-between items-center mt-auto pt-8 border-t border-foreground/5 z-10 bg-background/50 backdrop-blur-sm -mx-8 -mb-8 px-8 pb-8 rounded-b-[2rem]">
           {step > 1 ? (
             <button
@@ -397,9 +468,9 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
         </div>
       </div>
 
-      {/* STEP 6 & 7 CONTAINER */}
+      {/* STEP 7 & 8 CONTAINER */}
       <AnimatePresence>
-        {(step === 6 || step === 7) && (
+        {(step === 7 || step === 8) && (
           <motion.div 
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -408,7 +479,7 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
             className="fixed inset-0 z-[100] bg-black text-white flex justify-center items-center lg:p-8"
           >
             {/* The Full Screen Card */}
-            <div className={`relative w-full h-full lg:max-w-[450px] lg:aspect-[9/16] lg:h-auto bg-black lg:rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] border-0 lg:border border-white/10 group ${step === 7 ? 'blur-md brightness-50 scale-95 transition-all duration-1000' : 'transition-all duration-500'}`}>
+            <div className={`relative w-full h-full lg:max-w-[450px] lg:aspect-[9/16] lg:h-auto bg-black lg:rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] border-0 lg:border border-white/10 group ${step === 8 ? 'blur-md brightness-50 scale-95 transition-all duration-1000' : 'transition-all duration-500'}`}>
 
               {/* Background Image (Cover Photo) */}
               <div
@@ -582,9 +653,9 @@ export default function CreateEventWizard({ userId, onEventCreated }: Props) {
         )}
       </AnimatePresence>
 
-      {/* STEP 7 OVERLAY (Success & Share) */}
+      {/* STEP 8 OVERLAY (Success & Share) */}
       <AnimatePresence>
-        {step === 7 && createdEvent && (
+        {step === 8 && createdEvent && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

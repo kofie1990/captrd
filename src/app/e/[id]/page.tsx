@@ -58,6 +58,7 @@ export default function EventPortal() {
   if (!eventData) return <div className="min-h-screen bg-background flex items-center justify-center font-serif text-2xl text-red-500">Event not found</div>;
 
   const isRevealed = new Date() >= new Date(eventData.reveal_at);
+  const isEnded = eventData.end_at ? new Date() >= new Date(eventData.end_at) : false;
 
   if (showGallery && isRevealed) {
     return (
@@ -74,6 +75,39 @@ export default function EventPortal() {
 
         <div className="w-full max-w-[1600px] mx-auto -mt-32 relative z-10 px-2 md:px-4">
           <FilmRollGallery eventData={eventData} onViewCamera={() => setShowGallery(false)} />
+        </div>
+      </main>
+    );
+  }
+
+  if (isEnded && !showGallery) {
+    return (
+      <main className="fixed inset-0 bg-black text-white flex flex-col justify-end">
+        {/* Background Image (Cover Photo) */}
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center opacity-80"
+          style={{ backgroundImage: `url(${eventData.cover_photo_url || "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=800&auto=format&fit=crop"})` }}
+        />
+
+        {/* Dark Gradients for Text Readability */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/40 via-transparent to-black/95 pointer-events-none" />
+
+        {/* Content Area */}
+        <div className="relative z-10 w-full p-6 md:p-12 flex flex-col items-center text-center pb-12 animate-in slide-in-from-bottom-8 duration-1000 fade-in">
+          <h1 className="font-serif text-5xl md:text-7xl mb-4 drop-shadow-lg tracking-tight leading-tight max-w-[90%]">
+            {eventData.title}
+          </h1>
+
+          <p className="font-serif text-xl md:text-2xl italic opacity-90 max-w-[85%] leading-relaxed drop-shadow-md mb-8">
+            Event has ended. Thank you for contributing to the experience.
+          </p>
+
+          <button
+            onClick={() => setShowGallery(true)}
+            className="w-full max-w-sm bg-white text-black py-5 rounded-[2rem] font-mono font-bold uppercase tracking-widest text-xs shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            Click here to see the event photos
+          </button>
         </div>
       </main>
     );
@@ -296,13 +330,15 @@ function FilmRollGallery({ eventData, onViewCamera }: { eventData: any; onViewCa
     }
   };
 
+  const isEnded = eventData.end_at ? new Date() >= new Date(eventData.end_at) : false;
+
   return (
     <>
       <button
         onClick={onViewCamera}
         className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest opacity-60 hover:opacity-100 mb-8 transition-opacity text-white"
       >
-        <ArrowLeft className="w-4 h-4" /> Camera
+        <ArrowLeft className="w-4 h-4" /> {isEnded ? "Back" : "Camera"}
       </button>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12 border-b border-white/10 pb-8">

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
+import { toPng } from "html-to-image";
 
 type Event = {
   id: string;
@@ -19,6 +20,9 @@ export default function PrintPoster() {
   const eventId = params.id as string;
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  const posterRef = useRef<HTMLElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const hasAutoDownloaded = useRef(false);
 
   const supabase = createClient();
 
@@ -37,14 +41,37 @@ export default function PrintPoster() {
     fetchEvent();
   }, [eventId, supabase]);
 
+  const handleDownload = async () => {
+    if (!posterRef.current || !event) return;
+    try {
+      setIsGenerating(true);
+      
+      const dataUrl = await toPng(posterRef.current, {
+        pixelRatio: 4, // Very high definition
+        backgroundColor: "#000000"
+      });
+      
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `${event.title.replace(/\s+/g, '_')}_Poster.png`;
+      link.click();
+    } catch (error) {
+      console.error("Error generating poster:", error);
+      alert("Failed to generate high-resolution poster. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   useEffect(() => {
-    if (!loading && event) {
-      // Small delay to ensure images/QR code render before print dialog
+    if (!loading && event && !hasAutoDownloaded.current) {
+      hasAutoDownloaded.current = true;
       const timer = setTimeout(() => {
-        window.print();
-      }, 500);
+        handleDownload();
+      }, 800);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, event]);
 
   if (loading) return null;
@@ -57,30 +84,17 @@ export default function PrintPoster() {
   return (
     <>
       <style jsx global>{`
-        @page {
-          size: A4 portrait;
-          margin: 0;
-        }
         body {
           margin: 0;
           padding: 0;
           background: #000;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        @media print {
-          html, body {
-            width: 100vw !important;
-            height: 100vh !important;
-            overflow: hidden !important;
-          }
-          .no-print {
-            display: none !important;
-          }
         }
       `}</style>
       
-      <main className="w-[210mm] h-[297mm] relative overflow-hidden bg-black text-white mx-auto shadow-2xl flex flex-col justify-end print:fixed print:inset-0 print:w-[100vw] print:h-[100vh] print:shadow-none print:m-0 print:z-50">
+      <main 
+        ref={posterRef}
+        className="w-[210mm] h-[297mm] relative overflow-hidden bg-black text-white mx-auto shadow-2xl flex flex-col justify-end"
+      >
         
         {/* Background Image */}
         <img 
@@ -119,17 +133,18 @@ export default function PrintPoster() {
           )}
 
         </div>
-        
-        {/* Helper UI (Will not print) */}
-        <div className="no-print fixed top-6 right-6 z-50">
-           <button 
-             onClick={() => window.print()}
-             className="bg-white text-black px-6 py-3 rounded-full font-mono text-sm uppercase tracking-widest font-bold shadow-2xl hover:scale-105 transition-transform"
-           >
-             Print Again
-           </button>
-        </div>
       </main>
+
+      {/* Helper UI */}
+      <div className="fixed top-6 right-6 z-50">
+         <button 
+           onClick={handleDownload}
+           disabled={isGenerating}
+           className="bg-white text-black px-6 py-3 rounded-full font-mono text-sm uppercase tracking-widest font-bold shadow-2xl hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+         >
+           {isGenerating ? "Generating HD Image..." : "Save HD Poster"}
+         </button>
+      </div>
     </>
   );
 }
