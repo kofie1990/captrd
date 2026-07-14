@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, Settings, Image as ImageIcon, ExternalLink, MoreVertical, X, LogOut } from "lucide-react";
+import { Plus, Settings, Image as ImageIcon, ExternalLink, MoreVertical, X, LogOut, Edit2, Trash2, Eye } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navigation from "@/components/Navigation";
 import Link from "next/link";
@@ -31,6 +31,12 @@ export default function StudioDashboard() {
   const [eventName, setEventName] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
+  
+  const [activeMenuEventId, setActiveMenuEventId] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<StudioEvent | null>(null);
+  const [renameName, setRenameName] = useState("");
+  const [renaming, setRenaming] = useState(false);
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -38,6 +44,14 @@ export default function StudioDashboard() {
     if (typeof window !== "undefined" && window.location.search.includes("onboarding=true")) {
       setOnboardingStep(1);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setActiveMenuEventId(null);
+    };
+    window.addEventListener("click", handleGlobalClick);
+    return () => window.removeEventListener("click", handleGlobalClick);
   }, []);
 
   const fetchData = async () => {
@@ -158,6 +172,51 @@ export default function StudioDashboard() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this gallery and all of its photos? This action cannot be undone.")) return;
+    
+    try {
+      const { error } = await supabase
+        .from("studio_events")
+        .delete()
+        .eq("id", eventId);
+
+      if (error) throw error;
+      
+      setEvents(events.filter(e => e.id !== eventId));
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      alert("Failed to delete gallery");
+    }
+  };
+
+  const submitRenameEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent || !renameName.trim()) return;
+    setRenaming(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("studio_events")
+        .update({ name: renameName.trim() })
+        .eq("id", editingEvent.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setEvents(events.map(e => e.id === editingEvent.id ? { ...e, name: data.name } : e));
+        setEditingEvent(null);
+      }
+    } catch (error) {
+      console.error("Error renaming event:", error);
+      alert("Failed to rename gallery");
+    } finally {
+      setRenaming(false);
+    }
   };
 
   if (loading) {
@@ -294,11 +353,11 @@ export default function StudioDashboard() {
               <motion.div 
                 key={event.id}
                 whileHover={{ y: -5 }}
-                className="group relative bg-foreground/5 border border-foreground/10 rounded-[2rem] overflow-hidden flex flex-col"
+                className="group relative bg-foreground/5 border border-foreground/10 rounded-[2rem] flex flex-col"
               >
                 <Link href={`/studio/dashboard/${event.id}`} className="absolute inset-0 z-10" />
                 
-                <div className="aspect-[4/3] bg-foreground/10 relative overflow-hidden">
+                <div className="aspect-[4/3] bg-foreground/10 relative overflow-hidden rounded-t-[2rem]">
                   {event.cover_image_url ? (
                     <img src={event.cover_image_url} alt={event.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   ) : (
@@ -312,14 +371,74 @@ export default function StudioDashboard() {
                 <div className="p-6 flex flex-col flex-1 justify-between relative z-20">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="font-serif text-2xl mb-1 truncate pr-4">{event.name}</h3>
+                      <h3 className="font-serif text-2xl mb-1 pr-4">{event.name}</h3>
                       <p className="font-mono text-[10px] uppercase tracking-widest opacity-50">
                         {new Date(event.created_at).toLocaleDateString()} • {event.photo_count} Photos
                       </p>
                     </div>
-                    <button className="p-2 -mr-2 opacity-50 hover:opacity-100 hover:bg-foreground/10 rounded-full transition-colors relative z-30">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
+                    <div className="relative z-30">
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setActiveMenuEventId(activeMenuEventId === event.id ? null : event.id);
+                        }}
+                        className="p-2 -mr-2 opacity-50 hover:opacity-100 hover:bg-foreground/10 rounded-full transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      
+                      {activeMenuEventId === event.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-background border border-foreground/10 rounded-2xl shadow-xl backdrop-blur-md py-2 z-40 overflow-hidden">
+                          <Link 
+                            href={`/studio/dashboard/${event.id}`}
+                            className="flex items-center gap-3 px-4 py-3 text-xs font-mono uppercase tracking-wider hover:bg-foreground/10 transition-colors w-full text-left"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Eye className="w-3.5 h-3.5 opacity-60" />
+                            <span>View Gallery</span>
+                          </Link>
+                          
+                          <a 
+                            href={`/g/${studio.slug}/${event.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-3 px-4 py-3 text-xs font-mono uppercase tracking-wider hover:bg-foreground/10 transition-colors w-full text-left border-b border-foreground/10"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                            <span>Open Live</span>
+                          </a>
+                          
+                          <button 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setEditingEvent(event);
+                              setRenameName(event.name);
+                              setActiveMenuEventId(null);
+                            }}
+                            className="flex items-center gap-3 px-4 py-3 text-xs font-mono uppercase tracking-wider hover:bg-foreground/10 transition-colors w-full text-left"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 opacity-60" />
+                            <span>Rename</span>
+                          </button>
+                          
+                          <button 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeleteEvent(event.id);
+                              setActiveMenuEventId(null);
+                            }}
+                            className="flex items-center gap-3 px-4 py-3 text-xs font-mono uppercase tracking-wider text-red-500 hover:bg-red-500/10 transition-colors w-full text-left"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex items-center justify-between pt-4 border-t border-foreground/10">
@@ -376,6 +495,46 @@ export default function StudioDashboard() {
                   className="mt-2 w-full bg-foreground text-background py-4 rounded-full font-mono text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                 >
                   {creatingEvent ? "Creating..." : "Create Gallery"}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingEvent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-background border border-foreground/10 p-8 rounded-[2rem] relative shadow-2xl"
+            >
+              <button 
+                onClick={() => setEditingEvent(null)}
+                className="absolute top-6 right-6 opacity-50 hover:opacity-100 transition-opacity"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h2 className="font-serif text-3xl mb-2">Rename Gallery</h2>
+              <p className="opacity-60 text-sm mb-6">Enter a new name for the event gallery.</p>
+              
+              <form onSubmit={submitRenameEvent} className="flex flex-col gap-4">
+                <input
+                  autoFocus
+                  required
+                  value={renameName}
+                  onChange={(e) => setRenameName(e.target.value)}
+                  placeholder="e.g., Smith Wedding 2026"
+                  className="w-full bg-foreground/5 border border-foreground/20 rounded-xl px-4 py-3 outline-none focus:border-foreground/50 transition-colors"
+                />
+                <button 
+                  type="submit"
+                  disabled={renaming}
+                  className="mt-2 w-full bg-foreground text-background py-4 rounded-full font-mono text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {renaming ? "Saving..." : "Save Changes"}
                 </button>
               </form>
             </motion.div>

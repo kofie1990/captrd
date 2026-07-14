@@ -15,12 +15,14 @@ export default function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [studioLink, setStudioLink] = useState("/studio");
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
     const checkUserSubscription = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        setIsSignedIn(true);
         const { data } = await supabase
           .from("profiles")
           .select("is_studio_subscriber")
@@ -83,7 +85,11 @@ export default function Navigation() {
           <div className="hidden md:flex gap-12 text-xs font-mono tracking-[0.2em] uppercase text-white/70">
             <Link href={studioLink} className="hover:text-white transition-colors duration-300">Studio</Link>
             <Link href="/pricing" className="hover:text-white transition-colors duration-300">Pricing</Link>
-            <Link href="/login" className="hover:text-white transition-colors duration-300">Sign In</Link>
+            {isSignedIn ? (
+              <Link href="/dashboard" className="hover:text-white transition-colors duration-300">Dashboard</Link>
+            ) : (
+              <Link href="/login" className="hover:text-white transition-colors duration-300">Sign In</Link>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -110,7 +116,11 @@ export default function Navigation() {
             <div className="flex flex-col gap-12 text-4xl font-serif tracking-wide text-center text-white">
               <Link href={studioLink} onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Studio</Link>
               <Link href="/pricing" onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Pricing</Link>
-              <Link href="/login" onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Sign In</Link>
+              {isSignedIn ? (
+                <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Dashboard</Link>
+              ) : (
+                <Link href="/login" onClick={() => setMenuOpen(false)} className="hover:opacity-50 transition-opacity">Sign In</Link>
+              )}
             </div>
           </motion.div>
         )}
