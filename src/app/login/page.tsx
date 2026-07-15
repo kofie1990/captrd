@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import Navigation from "@/components/Navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -120,6 +121,9 @@ export default function LoginPage() {
               </svg>
               {checkingSession ? "Loading..." : loading ? "Connecting to Google..." : "Continue with Google"}
             </button>
+            <p className="text-center text-xs text-white/50 mt-2">
+              By signing in, you agree to our <Link href="/terms" className="underline hover:text-white transition-colors">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-white transition-colors">Privacy Policy</Link>.
+            </p>
           </div>
 
           <AnimatePresence>

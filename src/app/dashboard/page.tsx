@@ -37,7 +37,9 @@ export default function Dashboard() {
         return;
       }
       setUserId(session.user.id);
-      setUserName(session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "Photographer");
+      const fullName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "Photographer";
+      const firstName = session.user.user_metadata?.given_name || fullName.trim().split(/\s+/)[0].split('.')[0].split('_')[0];
+      setUserName(firstName);
 
       const { data } = await supabase
         .from("events")
