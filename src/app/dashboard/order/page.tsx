@@ -84,12 +84,41 @@ export default function OrderPrintsPage() {
     setFetchingPhotos(false);
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
+    if (!selectedEvent) return;
     setSimulatingCheckout(true);
-    setTimeout(() => {
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const { error } = await supabase.from('orders').insert({
+        user_id: session.user.id,
+        event_id: selectedEvent.id,
+        format,
+        finish,
+        shipping_name: shippingName,
+        shipping_address: shippingAddress,
+        shipping_city: shippingCity,
+        shipping_zip: shippingZip,
+        status: 'pending'
+      });
+
+      if (error) {
+        console.error("Error placing order:", error);
+        alert("Failed to place order. Please try again.");
+      } else {
+        setOrderComplete(true);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred.");
+    } finally {
       setSimulatingCheckout(false);
-      setOrderComplete(true);
-    }, 2000);
+    }
   };
 
   if (loading) return null;
