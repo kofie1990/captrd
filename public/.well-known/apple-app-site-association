@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["7TXV7D2XYZ.live.captrd.app"],
+        "components": [
+          {
+            "/": "/e/*",
+            "comment": "Matches event links to open the app"
+          }
+        ]
+      }
+    ]
+  },
+  "appclips": {
+    "apps": ["7TXV7D2XYZ.live.captrd.app.Clip"]
+  }
+}

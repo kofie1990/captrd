@@ -95,7 +95,7 @@ export default function OrderPrintsPage() {
         return;
       }
 
-      const { error } = await supabase.from('orders').insert({
+      const payload = {
         user_id: session.user.id,
         event_id: selectedEvent.id,
         format,
@@ -105,7 +105,11 @@ export default function OrderPrintsPage() {
         shipping_city: shippingCity,
         shipping_zip: shippingZip,
         status: 'pending'
-      });
+      };
+      
+      console.log("Sending payload to orders:", payload);
+
+      const { error } = await supabase.from('orders').insert([payload]);
 
       if (error) {
         console.error("Error placing order:", error);
