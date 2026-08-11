@@ -52,6 +52,26 @@ export default function LoginPage() {
     }
   };
 
+  const handleAppleLogin = async () => {
+    setLoading(true);
+    setMessage("");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectToPath = urlParams.get('redirectTo') || "/dashboard";
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: `${window.location.origin}${redirectToPath}`,
+      },
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center relative overflow-hidden px-6 md:px-0">
       {/* Immersive Background */}
@@ -107,7 +127,17 @@ export default function LoginPage() {
 
           <p className="text-center opacity-60 mb-10 font-mono uppercase tracking-widest text-[10px]">For Event Organizers</p>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
+            <button
+              onClick={handleAppleLogin}
+              disabled={loading || checkingSession}
+              className="w-full bg-[#111111] border border-white/20 text-white py-4 rounded-full font-bold tracking-wide text-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 transition-all shadow-[0_0_20px_rgba(255,255,255,0.05)] flex items-center justify-center gap-3"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className={checkingSession ? "opacity-50" : ""}>
+                <path d="M16.143 2.235c-.015.002-.132.012-.258.026-.642.067-1.397.353-2.03.77-.525.347-.946.804-1.353 1.467-.286.467-.478.966-.554 1.442-.047.288-.041.656.014.887.014.053.036.14.053.19l.069-.009c.645-.069 1.341-.336 1.954-.747.533-.356.96-.826 1.364-1.503.25-.42.427-.866.525-1.32.062-.294.062-.647.015-.877l-.022-.112-.058.006-.022-.008zm-2.88 5.626c-1.37-.024-2.81 1.002-3.327 1.343-.497-.333-1.66-1.129-3.078-1.077-1.745.064-3.486 1.118-4.402 2.724-1.896 3.323-.464 8.239 1.385 10.923.905 1.312 1.983 2.8 3.42 2.748 1.373-.053 1.868-.89 3.535-.89 1.666 0 2.122.89 3.57.863 1.488-.027 2.417-1.34 3.31-2.64 1.036-1.516 1.464-2.983 1.488-3.056-.032-.016-2.871-1.107-2.91-4.436-.037-2.793 2.26-4.148 2.37-4.21-.806-1.186-2.073-1.92-3.312-2.127-.674-.112-1.332-.152-2.05-.164z" />
+              </svg>
+              {checkingSession ? "Loading..." : loading ? "Connecting to Apple..." : "Continue with Apple"}
+            </button>
             <button
               onClick={handleGoogleLogin}
               disabled={loading || checkingSession}

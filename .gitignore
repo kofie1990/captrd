@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+AuthKey_49795SX36S.p8
+generate-apple-secret.js
+
