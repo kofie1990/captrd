@@ -45,3 +45,5 @@ next-env.d.ts
 AuthKey_49795SX36S.p8
 generate-apple-secret.js
 
+supabase/.temp
+
