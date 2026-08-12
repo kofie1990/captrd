@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [imageUrl],
     },
     other: {
-      'apple-itunes-app': `app-id=6798184664, app-clip-bundle-id=7TXV7D2XYZ.live.captrd.app.Clip, app-argument=https://captrd.live/e/${data.short_code || data.id}`
+      'apple-itunes-app': `app-id=6798184664, app-clip-bundle-id=live.captrd.app.appclip, app-argument=https://captrd.live/e/${data.short_code || data.id}`
     }
   };
 }
