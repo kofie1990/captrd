@@ -251,8 +251,11 @@ export default function Dashboard() {
             <h3 className="font-serif text-2xl mb-2 text-white">Share Roll</h3>
             <p className="font-mono text-[10px] uppercase tracking-widest opacity-50 mb-8 text-center text-white">{sharingEvent.title}</p>
 
-            <div className="bg-white p-3 rounded-2xl mb-8 shadow-lg">
+            <div className="bg-white p-4 rounded-2xl mb-8 shadow-lg flex flex-col items-center">
               <QRCodeSVG value={getEventUrl(sharingEvent.short_code || sharingEvent.id)} size={140} />
+              <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-black/60 text-center">
+                Code: <span className="font-bold text-black text-sm">{sharingEvent.short_code}</span>
+              </div>
             </div>
 
             <div className="w-full flex flex-col gap-3">

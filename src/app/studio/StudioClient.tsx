@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Upload, Download, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useTransform, useSpring, useMotionValue } from "framer-motion";
 import { usePaystackPayment } from 'react-paystack';
 import { createClient } from "@/lib/supabase/client";
 
@@ -22,11 +22,16 @@ export default function StudioClient() {
     hidden: { opacity: 0, y: 30 },
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 50 } },
   };
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [15, -15]), { stiffness: 150, damping: 20 });
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-15, 15]), { stiffness: 150, damping: 20 });
 
   const [user, setUser] = useState<any>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const supabase = createClient();
-
+  
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -166,7 +171,57 @@ export default function StudioClient() {
             A dedicated subscription platform for professional photographers to upload their high-resolution event galleries, making it effortless for guests to view and download their memories.
           </motion.p>
         </motion.div>
+        <motion.div
+        className="relative z-10 w-full max-w-[500px] md:max-w-[700px] mx-auto md:mt-24 px-4"
+        style={{ perspective: 2000 }}
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {/*devices animation*/}
+        <motion.div
+          style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+          animate={{ y: [0, -15, 0] }}
+          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+          className="relative w-full aspect-[4/3] flex items-center justify-center group"
+        >
+          {/* Dynamic Glow/Shadow behind the devices */}
+          <motion.div
+            style={{ z: -100 }}
+            className="absolute inset-0 bg-white/10 blur-[80px] md:blur-[100px] rounded-full scale-75 group-hover:bg-white/20 group-hover:scale-90 transition-all duration-700 pointer-events-none"
+          />
 
+          {/* Left laptop: (Back) */}
+          <motion.img
+            src="/midnight.png"
+            alt="Gallery Demo"
+            className="absolute w-[100%] sm:w-[100%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-0 cursor-crosshair"
+            style={{
+              x: "-5%",
+              y: "5%",
+              z: -40,
+              rotateZ: 0,
+              filter: "brightness(0.9) contrast(1.1)"
+            }}
+            whileHover={{ scale: 1.05, filter: "brightness(1) contrast(1.1)", z: 10 }}
+          />
+
+          {/* Right Phone: Gallery (Front) */}
+          <motion.img
+            src="/kid_birthday.png"
+            alt="Camera Screen Demo"
+            className="absolute w-[40%] sm:w-[40%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-10 cursor-pointer"
+            style={{
+              x: "60%",
+              y: "-5%",
+              z: 60,
+              rotateZ: 0
+            }}
+            whileHover={{ scale: 1.05, z: 90 }}
+          />
+        </motion.div>
+
+      </motion.div>
         <motion.div 
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -215,7 +270,7 @@ export default function StudioClient() {
 
           <h3 className="font-serif text-4xl md:text-5xl mb-4 text-center">Start your Studio</h3>
           <p className="text-base opacity-60 mb-10 text-center font-light leading-relaxed">
-            Join Captrd Studio for GH₵ 59/month to get unlimited high-resolution uploads and easy client delivery.
+            Join Captrd Studio starting from GH₵ 69/month to get unlimited high-resolution uploads and easy client delivery.
           </p>
           <button 
             onClick={handleSubscribe}

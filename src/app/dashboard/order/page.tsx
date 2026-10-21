@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ArrowLeft, CheckCircle, Image as ImageIcon, Book, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getFilterClass } from "@/lib/filters";
+import { usePaystackPayment } from "react-paystack";
 
 type Event = {
   id: string;
@@ -40,12 +41,14 @@ export default function OrderPrintsPage() {
   const [shippingName, setShippingName] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [shippingCity, setShippingCity] = useState("");
-  const [shippingZip, setShippingZip] = useState("");
+  const [shippingGps, setShippingGps] = useState("");
+  const [shippingEmail, setShippingEmail] = useState("");
 
   // Checkout state
   const [showShippingStep, setShowShippingStep] = useState(false);
   const [simulatingCheckout, setSimulatingCheckout] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [currentReference, setCurrentReference] = useState("");
 
   const router = useRouter();
   const supabase = createClient();
@@ -84,9 +87,30 @@ export default function OrderPrintsPage() {
     setFetchingPhotos(false);
   };
 
+  const config = {
+    reference: currentReference,
+    email: shippingEmail || "placeholder@example.com",
+    amount: 399 * 100, // Paystack expects amount in lowest denomination (e.g. kobo/pesewas)
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+  };
+
+  const initializePayment = usePaystackPayment(config);
+
+  const onSuccess = () => {
+    setOrderComplete(true);
+    setSimulatingCheckout(false);
+  };
+
+  const onClose = () => {
+    setSimulatingCheckout(false);
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedEvent) return;
     setSimulatingCheckout(true);
+
+    const generatedRef = `CPTRD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    setCurrentReference(generatedRef);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -103,8 +127,10 @@ export default function OrderPrintsPage() {
         shipping_name: shippingName,
         shipping_address: shippingAddress,
         shipping_city: shippingCity,
-        shipping_zip: shippingZip,
-        status: 'pending'
+        shipping_gps: shippingGps,
+        shipping_email: shippingEmail,
+        status: 'pending',
+        paystack_reference: generatedRef
       };
       
       console.log("Sending payload to orders:", payload);
@@ -114,13 +140,16 @@ export default function OrderPrintsPage() {
       if (error) {
         console.error("Error placing order:", error);
         alert("Failed to place order. Please try again.");
+        setSimulatingCheckout(false);
       } else {
-        setOrderComplete(true);
+        // Trigger paystack popup
+        setTimeout(() => {
+          initializePayment({ onSuccess, onClose });
+        }, 100);
       }
     } catch (err) {
       console.error(err);
       alert("An unexpected error occurred.");
-    } finally {
       setSimulatingCheckout(false);
     }
   };
@@ -206,6 +235,13 @@ export default function OrderPrintsPage() {
                   className="w-full bg-background border border-foreground/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-foreground transition-colors"
                 />
                 <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={shippingEmail}
+                  onChange={e => setShippingEmail(e.target.value)}
+                  className="w-full bg-background border border-foreground/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-foreground transition-colors"
+                />
+                <input
                   type="text"
                   placeholder="Address"
                   value={shippingAddress}
@@ -222,9 +258,9 @@ export default function OrderPrintsPage() {
                   />
                   <input
                     type="text"
-                    placeholder="ZIP Code"
-                    value={shippingZip}
-                    onChange={e => setShippingZip(e.target.value)}
+                    placeholder="Ghana GPS Address (GA-XXX-XXX)"
+                    value={shippingGps}
+                    onChange={e => setShippingGps(e.target.value)}
                     className="w-full bg-background border border-foreground/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-foreground transition-colors"
                   />
                 </div>
@@ -240,7 +276,7 @@ export default function OrderPrintsPage() {
                 </div>
                 <button
                   onClick={handlePlaceOrder}
-                  disabled={simulatingCheckout || !shippingName || !shippingAddress || !shippingCity || !shippingZip}
+                  disabled={simulatingCheckout || !shippingName || !shippingEmail || !shippingAddress || !shippingCity || !shippingGps}
                   className="w-full bg-foreground text-background py-4 rounded-full font-mono font-bold uppercase tracking-widest text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-foreground/10"
                 >
                   {simulatingCheckout ? "Processing..." : "Place Order"}

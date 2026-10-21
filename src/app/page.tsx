@@ -1,6 +1,7 @@
 import Navigation from "@/components/Navigation";
 import HeroSection from "@/components/landing/HeroSection";
 import TimelineScroller from "@/components/landing/TimelineScroller";
+import PhotographerSection from "@/components/landing/PhotographerSection";
 import BentoGrid from "@/components/landing/BentoGrid";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -13,6 +14,8 @@ export default function Home() {
       <HeroSection />
 
       <TimelineScroller />
+
+      <PhotographerSection />
 
       <BentoGrid />
 

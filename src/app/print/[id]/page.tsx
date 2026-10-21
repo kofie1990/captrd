@@ -121,8 +121,9 @@ export default function PrintPoster() {
           {/* QR Code Block */}
           <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] mb-12 flex flex-col items-center">
             <QRCodeSVG value={eventUrl} size={250} />
-            <div className="mt-6 font-mono text-xs uppercase tracking-widest text-black/40">
-              Scan to join Film Roll
+            <div className="mt-6 font-mono text-xs uppercase tracking-widest text-black/40 text-center">
+              Scan to join Film Roll<br/>
+              Or enter code: <span className="font-bold text-black text-lg">{event.short_code}</span>
             </div>
           </div>
 

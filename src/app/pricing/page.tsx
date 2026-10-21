@@ -154,9 +154,44 @@ export default function PricingPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-foreground/5 blur-[80px] rounded-full group-hover:bg-foreground/10 transition-colors duration-700 pointer-events-none" />
 
           <div className="flex-1 relative z-10">
+            <h3 className="font-mono text-sm tracking-widest uppercase opacity-60 mb-2">Starter Photographer</h3>
+            <div className="flex items-baseline gap-2 mb-6">
+              <span className="font-serif text-6xl tracking-tighter">GH₵ 69</span>
+              <span className="opacity-60 text-sm">/ month</span>
+            </div>
+            <p className="text-sm opacity-80 mb-8 leading-relaxed">
+              Everything a starter photographer needs to host high-res event photos and provide easy downloads for users.
+            </p>
+            <a href={studioLink} className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+              {studioLink === "/studio/dashboard" ? "Go to Dashboard" : "Subscribe to Studio"}
+            </a>
+          </div>
+          
+          <div className="flex-1 flex flex-col justify-center relative z-10">
+            <ul className="flex flex-col gap-6 text-sm">
+              {[
+                "Easy high-res client downloads",
+                "Custom branded galleries",
+              ].map((item, i) => (
+                <li key={i} className="flex items-center gap-4 group/item">
+                  <div className="w-6 h-6 rounded-full border border-foreground/20 flex items-center justify-center shrink-0 group-hover/item:bg-foreground group-hover/item:text-background transition-colors duration-300">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <span className="opacity-80 group-hover/item:opacity-100 transition-opacity">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="glass mt-10 p-10 md:p-16 rounded-[3rem] flex flex-col md:flex-row text-left relative overflow-hidden border border-foreground/10 bg-foreground/5 max-w-4xl w-full gap-12 group hover:border-foreground/20 transition-colors duration-500">
+          {/* Decorative glow */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-foreground/5 blur-[80px] rounded-full group-hover:bg-foreground/10 transition-colors duration-700 pointer-events-none" />
+
+          <div className="flex-1 relative z-10">
             <h3 className="font-mono text-sm tracking-widest uppercase opacity-60 mb-2">Pro Photographer</h3>
             <div className="flex items-baseline gap-2 mb-6">
-              <span className="font-serif text-6xl tracking-tighter">GH₵ 59</span>
+              <span className="font-serif text-6xl tracking-tighter">GH₵ 250</span>
               <span className="opacity-60 text-sm">/ month</span>
             </div>
             <p className="text-sm opacity-80 mb-8 leading-relaxed">
