@@ -31,7 +31,7 @@ export default function StudioClient() {
   const [user, setUser] = useState<any>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const supabase = createClient();
-  
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -68,7 +68,7 @@ export default function StudioClient() {
       onSuccess: async (reference: any) => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          
+
           const response = await fetch('/api/payments/verify-studio', {
             method: 'POST',
             headers: {
@@ -104,15 +104,15 @@ export default function StudioClient() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-foreground/5 blur-[150px] rounded-full pointer-events-none -z-10" />
 
       <Navigation />
-      
+
       <div className="flex-1 flex flex-col items-center justify-center pt-32 px-6 md:px-16 text-center max-w-5xl mx-auto z-10 w-full">
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="show"
           className="flex flex-col items-center w-full"
         >
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             whileHover="hover"
             initial="initial"
@@ -128,15 +128,15 @@ export default function StudioClient() {
                 background: 'conic-gradient(from 90deg at 50% 50%, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)'
               }}
             />
-            
+
             {/* The inner badge background */}
             <div className="relative flex items-center gap-3 px-6 py-2.5 rounded-full bg-background border border-foreground/10 group-hover:border-foreground/5 transition-colors duration-500 overflow-hidden h-full w-full">
-              
+
               {/* Glassmorphism subtle overlay */}
               <div className="absolute inset-0 bg-foreground/5 backdrop-blur-md" />
-              
+
               {/* Shine sweep effect on hover */}
-              <motion.div 
+              <motion.div
                 variants={{
                   initial: { x: "-200%" },
                   hover: { x: "300%" }
@@ -162,78 +162,78 @@ export default function StudioClient() {
               </span>
             </div>
           </motion.div>
-          
+
           <motion.h1 variants={itemVariants} className="font-serif text-6xl md:text-8xl lg:text-9xl tracking-tighter mb-8 leading-[0.9]">
             The <span className="italic font-light opacity-80">Studio</span>
           </motion.h1>
-          
+
           <motion.p variants={itemVariants} className="text-lg md:text-2xl text-foreground/60 leading-relaxed font-light mb-16 max-w-2xl mx-auto">
             A dedicated subscription platform for professional photographers to upload their high-resolution event galleries, making it effortless for guests to view and download their memories.
           </motion.p>
         </motion.div>
         <motion.div
-        className="relative z-10 w-full max-w-[500px] md:max-w-[700px] mx-auto md:mt-24 px-4"
-        style={{ perspective: 2000 }}
-        initial={{ opacity: 0, y: 100 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {/*devices animation*/}
-        <motion.div
-          style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-          animate={{ y: [0, -15, 0] }}
-          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-          className="relative w-full aspect-[4/3] flex items-center justify-center group"
+          className="relative z-10 w-full max-w-[500px] md:max-w-[700px] mx-auto md:mt-24 px-4"
+          style={{ perspective: 2000 }}
+          initial={{ opacity: 0, y: 100 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* Dynamic Glow/Shadow behind the devices */}
+          {/*devices animation*/}
           <motion.div
-            style={{ z: -100 }}
-            className="absolute inset-0 bg-white/10 blur-[80px] md:blur-[100px] rounded-full scale-75 group-hover:bg-white/20 group-hover:scale-90 transition-all duration-700 pointer-events-none"
-          />
+            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+            animate={{ y: [0, -15, 0] }}
+            transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+            className="relative w-full aspect-[4/3] flex items-center justify-center group"
+          >
+            {/* Dynamic Glow/Shadow behind the devices */}
+            <motion.div
+              style={{ z: -100 }}
+              className="absolute inset-0 bg-white/10 blur-[80px] md:blur-[100px] rounded-full scale-75 group-hover:bg-white/20 group-hover:scale-90 transition-all duration-700 pointer-events-none"
+            />
 
-          {/* Left laptop: (Back) */}
-          <motion.img
-            src="/midnight.png"
-            alt="Gallery Demo"
-            className="absolute w-[100%] sm:w-[100%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-0 cursor-crosshair"
-            style={{
-              x: "-5%",
-              y: "5%",
-              z: -40,
-              rotateZ: 0,
-              filter: "brightness(0.9) contrast(1.1)"
-            }}
-            whileHover={{ scale: 1.05, filter: "brightness(1) contrast(1.1)", z: 10 }}
-          />
+            {/* Left laptop: (Back) */}
+            <motion.img
+              src="/laptop.png"
+              alt="Gallery Demo"
+              className="absolute w-[100%] sm:w-[100%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-0 cursor-crosshair"
+              style={{
+                x: "-5%",
+                y: "5%",
+                z: -40,
+                rotateZ: 0,
+                filter: "brightness(0.9) contrast(1.1)"
+              }}
+              whileHover={{ scale: 1.05, filter: "brightness(1) contrast(1.1)", z: 10 }}
+            />
 
-          {/* Right Phone: Gallery (Front) */}
-          <motion.img
-            src="/kid_birthday.png"
-            alt="Camera Screen Demo"
-            className="absolute w-[40%] sm:w-[40%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-10 cursor-pointer"
-            style={{
-              x: "60%",
-              y: "-5%",
-              z: 60,
-              rotateZ: 0
-            }}
-            whileHover={{ scale: 1.05, z: 90 }}
-          />
+            {/* Right Phone: Gallery (Front) */}
+            <motion.img
+              src="/kid_birthday.png"
+              alt="Camera Screen Demo"
+              className="absolute w-[40%] sm:w-[40%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-10 cursor-pointer"
+              style={{
+                x: "60%",
+                y: "-5%",
+                z: 60,
+                rotateZ: 0
+              }}
+              whileHover={{ scale: 1.05, z: 90 }}
+            />
+          </motion.div>
+
         </motion.div>
-
-      </motion.div>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8 }}
           className="grid md:grid-cols-2 gap-6 lg:gap-10 text-left w-full mt-8 max-w-4xl mx-auto"
         >
-          
+
           <div className="glass p-10 md:p-12 rounded-[3rem] flex flex-col group hover:bg-foreground/5 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl border border-foreground/10 relative overflow-hidden">
             {/* Hover gradient effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-foreground/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
+
             <div className="w-16 h-16 rounded-full border border-foreground/20 flex items-center justify-center mb-8 group-hover:bg-foreground group-hover:text-background transition-colors duration-500 relative z-10">
               <Upload className="w-6 h-6" />
             </div>
@@ -242,11 +242,11 @@ export default function StudioClient() {
               Say goodbye to compressed images. Upload your pristine, high-resolution edits directly to Captrd Studio. We preserve the quality of your work so it looks exactly as you intended.
             </p>
           </div>
-          
+
           <div className="glass p-10 md:p-12 rounded-[3rem] flex flex-col group hover:bg-foreground/5 transition-all duration-500 md:translate-y-12 hover:md:translate-y-10 hover:shadow-2xl border border-foreground/10 relative overflow-hidden">
-             {/* Hover gradient effect */}
-             <div className="absolute inset-0 bg-gradient-to-b from-foreground/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-             
+            {/* Hover gradient effect */}
+            <div className="absolute inset-0 bg-gradient-to-b from-foreground/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
             <div className="w-16 h-16 rounded-full border border-foreground/20 flex items-center justify-center mb-8 group-hover:bg-foreground group-hover:text-background transition-colors duration-500 relative z-10">
               <Download className="w-6 h-6" />
             </div>
@@ -255,10 +255,10 @@ export default function StudioClient() {
               Users and event guests can easily access the gallery and download the high-resolution pictures straight to their devices without jumping through hoops or creating complex accounts.
             </p>
           </div>
-          
+
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -272,7 +272,7 @@ export default function StudioClient() {
           <p className="text-base opacity-60 mb-10 text-center font-light leading-relaxed">
             Join Captrd Studio starting from GH₵ 69/month to get unlimited high-resolution uploads and easy client delivery.
           </p>
-          <button 
+          <button
             onClick={handleSubscribe}
             disabled={isSubscribing}
             className="px-12 py-5 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] disabled:opacity-50"
