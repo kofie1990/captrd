@@ -6,6 +6,7 @@ import Navigation from "@/components/Navigation";
 import { ArrowLeft, Copy, ExternalLink, Trash2, Image as ImageIcon, Star } from "lucide-react";
 import Link from "next/link";
 import ImageUploader from "@/components/studio/ImageUploader";
+import { StudioTier } from "@/lib/studio/tiers";
 
 type StudioEvent = {
   id: string;
@@ -31,6 +32,7 @@ export default function EventDashboard({ params }: { params: Promise<{ eventId: 
   const [event, setEvent] = useState<StudioEvent | null>(null);
   const [studio, setStudio] = useState<Studio | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [tier, setTier] = useState<StudioTier>('starter');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -42,6 +44,17 @@ export default function EventDashboard({ params }: { params: Promise<{ eventId: 
       if (!session) {
         window.location.href = "/login";
         return;
+      }
+
+      // Fetch user tier
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("studio_tier")
+        .eq("id", session.user.id)
+        .single();
+        
+      if (profile?.studio_tier === 'pro' || profile?.studio_tier === 'starter') {
+        setTier(profile.studio_tier);
       }
 
       // Fetch Event
@@ -88,19 +101,6 @@ export default function EventDashboard({ params }: { params: Promise<{ eventId: 
   }, [unwrappedParams.eventId]);
 
   const handleDeletePhoto = async (photoId: string) => {
-    if (!confirm("Are you sure you want to delete this photo?")) return;
-    
-    // Optimistic UI update
-    setPhotos(photos.filter(p => p.id !== photoId));
-    
-    await supabase
-      .from("studio_events")
-      .delete()
-      .eq("id", photoId); // Just a note, this had a bug, it should be studio_photos
-  }; // Wait, I will fix the bug above in this chunk as well!
-
-  // Fixed the delete photo bug and added set cover
-  const handleDeletePhotoFix = async (photoId: string) => {
     if (!confirm("Are you sure you want to delete this photo?")) return;
     setPhotos(photos.filter(p => p.id !== photoId));
     await supabase.from("studio_photos").delete().eq("id", photoId);
@@ -193,7 +193,12 @@ export default function EventDashboard({ params }: { params: Promise<{ eventId: 
 
       <div className="w-full max-w-6xl mx-auto mb-16">
         <h3 className="font-serif text-3xl mb-6">Upload New Photos</h3>
-        <ImageUploader eventId={event.id} onUploadComplete={fetchEventData} />
+        <ImageUploader 
+          eventId={event.id} 
+          tier={tier} 
+          currentPhotoCount={photos.length} 
+          onUploadComplete={fetchEventData} 
+        />
       </div>
       
       <div className="w-full max-w-6xl mx-auto">
@@ -233,7 +238,7 @@ export default function EventDashboard({ params }: { params: Promise<{ eventId: 
                     <ExternalLink className="w-4 h-4" />
                   </a>
                   <button 
-                    onClick={() => handleDeletePhotoFix(photo.id)}
+                    onClick={() => handleDeletePhoto(photo.id)}
                     className="p-3 bg-red-500/80 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />

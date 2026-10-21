@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: Request) {
   try {
-    const { reference } = await req.json();
+    const body = await req.json();
+    const { reference, tier: reqTier } = body;
     const authHeader = req.headers.get('Authorization');
 
     if (!authHeader) {
@@ -39,12 +40,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
     }
 
+    const paystackMetadata = verifyData.data?.metadata || {};
+    const rawTier = paystackMetadata.tier || reqTier || 'starter';
+    const tier = String(rawTier).toLowerCase() === 'pro' ? 'pro' : 'starter';
+
     // Safely update profile using the admin client (bypasses RLS)
     const { error } = await supabaseAdmin
       .from('profiles')
       .upsert({ 
         id: user.id, 
         is_studio_subscriber: true, 
+        studio_tier: tier,
+        studio_subscription_status: 'active',
         paystack_subscription_code: reference 
       });
 

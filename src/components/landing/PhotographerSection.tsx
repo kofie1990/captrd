@@ -121,7 +121,7 @@ export default function PhotographerSection() {
                   <h3 className="font-serif text-2xl md:text-3xl text-white">The Studio</h3>
                 </div>
                 <p className="text-white/60 font-light leading-relaxed text-sm mb-8">
-                  Join Captrd Studio for GH₵ 59/month to get unlimited high-res uploads and effortless client delivery.
+                  Join Captrd Studio starting from GH₵ 69/month to host your high-res galleries and deliver effortlessly to clients.
                 </p>
               </div>
               

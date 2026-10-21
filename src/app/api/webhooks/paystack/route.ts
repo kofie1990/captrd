@@ -63,6 +63,7 @@ export async function POST(req: Request) {
       // Handle Studio Subscription Fallback
       else if (metadata.action === 'studio_subscription') {
         const userId = metadata.userId;
+        const tier = String(metadata.tier || 'starter').toLowerCase() === 'pro' ? 'pro' : 'starter';
 
         if (!userId) {
           return NextResponse.json({ error: 'Missing userId in metadata' }, { status: 400 });
@@ -73,6 +74,8 @@ export async function POST(req: Request) {
           .upsert({ 
             id: userId, 
             is_studio_subscriber: true, 
+            studio_tier: tier,
+            studio_subscription_status: 'active',
             paystack_subscription_code: data.reference 
           });
 

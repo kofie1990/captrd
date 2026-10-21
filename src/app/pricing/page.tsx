@@ -20,7 +20,8 @@ export default function PricingPage() {
 
   const [selectedIdx, setSelectedIdx] = useState(0);
   const selectedTier = eventTiers[selectedIdx];
-  const [studioLink, setStudioLink] = useState("/studio");
+  const [isSubscriber, setIsSubscriber] = useState(false);
+  const [userTier, setUserTier] = useState<"starter" | "pro" | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -29,12 +30,13 @@ export default function PricingPage() {
       if (session) {
         const { data } = await supabase
           .from("profiles")
-          .select("is_studio_subscriber")
+          .select("is_studio_subscriber, studio_tier")
           .eq("id", session.user.id)
           .single();
 
         if (data?.is_studio_subscriber) {
-          setStudioLink("/studio/dashboard");
+          setIsSubscriber(true);
+          setUserTier(data.studio_tier === 'pro' ? 'pro' : 'starter');
         }
       }
     };
@@ -149,12 +151,20 @@ export default function PricingPage() {
           A dedicated subscription for photographers to upload high-res galleries and deliver them beautifully to clients.
         </p>
 
+        {/* Starter Photographer Card */}
         <div className="glass p-10 md:p-16 rounded-[3rem] flex flex-col md:flex-row text-left relative overflow-hidden border border-foreground/10 bg-foreground/5 max-w-4xl w-full gap-12 group hover:border-foreground/20 transition-colors duration-500">
           {/* Decorative glow */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-foreground/5 blur-[80px] rounded-full group-hover:bg-foreground/10 transition-colors duration-700 pointer-events-none" />
 
           <div className="flex-1 relative z-10">
-            <h3 className="font-mono text-sm tracking-widest uppercase opacity-60 mb-2">Starter Photographer</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-mono text-sm tracking-widest uppercase opacity-60">Starter Photographer</h3>
+              {isSubscriber && userTier === "starter" && (
+                <span className="px-3 py-1 rounded-full bg-foreground/10 text-foreground text-[10px] font-mono uppercase tracking-wider">
+                  Current Plan
+                </span>
+              )}
+            </div>
             <div className="flex items-baseline gap-2 mb-6">
               <span className="font-serif text-6xl tracking-tighter">GH₵ 69</span>
               <span className="opacity-60 text-sm">/ month</span>
@@ -162,14 +172,35 @@ export default function PricingPage() {
             <p className="text-sm opacity-80 mb-8 leading-relaxed">
               Everything a starter photographer needs to host high-res event photos and provide easy downloads for users.
             </p>
-            <a href={studioLink} className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-              {studioLink === "/studio/dashboard" ? "Go to Dashboard" : "Subscribe to Studio"}
-            </a>
+            {isSubscriber && userTier === "starter" ? (
+              <a 
+                href="/studio/dashboard" 
+                className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              >
+                Go to Dashboard
+              </a>
+            ) : isSubscriber && userTier === "pro" ? (
+              <a 
+                href="/studio/dashboard" 
+                className="inline-block text-center w-full md:w-auto px-8 py-4 border border-foreground/20 text-foreground/70 rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Included in Pro
+              </a>
+            ) : (
+              <a 
+                href="/studio?tier=starter" 
+                className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              >
+                Subscribe to Starter
+              </a>
+            )}
           </div>
           
           <div className="flex-1 flex flex-col justify-center relative z-10">
             <ul className="flex flex-col gap-6 text-sm">
               {[
+                "Up to 150 photos per gallery",
+                "Up to 5 active galleries",
                 "Easy high-res client downloads",
                 "Custom branded galleries",
               ].map((item, i) => (
@@ -184,12 +215,20 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {/* Pro Photographer Card */}
         <div className="glass mt-10 p-10 md:p-16 rounded-[3rem] flex flex-col md:flex-row text-left relative overflow-hidden border border-foreground/10 bg-foreground/5 max-w-4xl w-full gap-12 group hover:border-foreground/20 transition-colors duration-500">
           {/* Decorative glow */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-foreground/5 blur-[80px] rounded-full group-hover:bg-foreground/10 transition-colors duration-700 pointer-events-none" />
 
           <div className="flex-1 relative z-10">
-            <h3 className="font-mono text-sm tracking-widest uppercase opacity-60 mb-2">Pro Photographer</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-mono text-sm tracking-widest uppercase opacity-60">Pro Photographer</h3>
+              {isSubscriber && userTier === "pro" && (
+                <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-mono uppercase tracking-wider">
+                  Current Plan
+                </span>
+              )}
+            </div>
             <div className="flex items-baseline gap-2 mb-6">
               <span className="font-serif text-6xl tracking-tighter">GH₵ 250</span>
               <span className="opacity-60 text-sm">/ month</span>
@@ -197,15 +236,35 @@ export default function PricingPage() {
             <p className="text-sm opacity-80 mb-8 leading-relaxed">
               Everything a professional photographer needs to host high-res event photos and provide easy downloads for users.
             </p>
-            <a href={studioLink} className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-              {studioLink === "/studio/dashboard" ? "Go to Dashboard" : "Subscribe to Studio"}
-            </a>
+            {isSubscriber && userTier === "pro" ? (
+              <a 
+                href="/studio/dashboard" 
+                className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              >
+                Go to Dashboard
+              </a>
+            ) : isSubscriber && userTier === "starter" ? (
+              <a 
+                href="/studio?tier=pro" 
+                className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              >
+                Upgrade to Pro
+              </a>
+            ) : (
+              <a 
+                href="/studio?tier=pro" 
+                className="inline-block text-center w-full md:w-auto px-8 py-4 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              >
+                Subscribe to Pro
+              </a>
+            )}
           </div>
           
           <div className="flex-1 flex flex-col justify-center relative z-10">
             <ul className="flex flex-col gap-6 text-sm">
               {[
                 "Unlimited high-res photo uploads",
+                "Unlimited active galleries",
                 "Easy high-res client downloads",
                 "Custom branded galleries",
                 "Priority cloud storage"

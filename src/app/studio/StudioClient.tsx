@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
-import { Upload, Download, Sparkles } from "lucide-react";
+import { Upload, Download, Sparkles, Check } from "lucide-react";
 import { motion, useTransform, useSpring, useMotionValue } from "framer-motion";
 import { usePaystackPayment } from 'react-paystack';
 import { createClient } from "@/lib/supabase/client";
+import { STUDIO_TIERS, StudioTier, calculateAmountWithFee } from "@/lib/studio/tiers";
 
 export default function StudioClient() {
   const containerVariants = {
@@ -22,36 +23,74 @@ export default function StudioClient() {
     hidden: { opacity: 0, y: 30 },
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 50 } },
   };
+
+  // 3D Tilt Effect on mouse move
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [15, -15]), { stiffness: 150, damping: 20 });
-  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-15, 15]), { stiffness: 150, damping: 20 });
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [12, -12]), { stiffness: 150, damping: 20 });
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-12, 12]), { stiffness: 150, damping: 20 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const { innerWidth, innerHeight } = window;
+      const x = e.clientX / innerWidth - 0.5;
+      const y = e.clientY / innerHeight - 0.5;
+      mouseX.set(x);
+      mouseY.set(y);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
 
   const [user, setUser] = useState<any>(null);
+  const [currentUserTier, setCurrentUserTier] = useState<StudioTier | null>(null);
+  const [isAlreadySubscriber, setIsAlreadySubscriber] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<StudioTier>('starter');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user);
-    });
-  }, []);
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_studio_subscriber, studio_tier")
+          .eq("id", user.id)
+          .single();
 
-  // Paystack fee in Ghana is 1.95%. To pass fee to customer: amount = original / (1 - 0.0195)
-  const baseAmountInPesewas = 5900;
-  const amountWithFee = Math.ceil(baseAmountInPesewas / 0.9805);
+        if (profile?.is_studio_subscriber) {
+          setIsAlreadySubscriber(true);
+          setCurrentUserTier(profile.studio_tier === 'pro' ? 'pro' : 'starter');
+        }
+      }
+    });
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tierParam = params.get('tier');
+      if (tierParam === 'pro' || tierParam === 'starter') {
+        setSelectedTier(tierParam);
+      }
+    }
+  }, [supabase]);
+
+  const currentTierConfig = STUDIO_TIERS[selectedTier];
+  const amountWithFee = calculateAmountWithFee(currentTierConfig.baseAmountInPesewas);
 
   const paystackConfig = {
     reference: `sub_${new Date().getTime()}`,
     email: user?.email || "subscriber@captrd.com",
     amount: amountWithFee,
-    plan: process.env.NEXT_PUBLIC_PAYSTACK_STUDIO_PLAN_CODE || '',
+    plan: currentTierConfig.planCode,
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
     currency: 'GHS',
     metadata: {
       action: "studio_subscription",
       userId: user?.id,
+      tier: selectedTier,
       custom_fields: []
     }
   };
@@ -59,8 +98,14 @@ export default function StudioClient() {
   const initializePayment = usePaystackPayment(paystackConfig);
 
   const handleSubscribe = () => {
+    if (isAlreadySubscriber) {
+      if (currentUserTier === 'pro' || currentUserTier === selectedTier) {
+        window.location.href = "/studio/dashboard";
+        return;
+      }
+    }
     if (!user) {
-      window.location.href = "/login?redirectTo=/studio";
+      window.location.href = `/login?redirectTo=/studio?tier=${selectedTier}`;
       return;
     }
     setIsSubscribing(true);
@@ -75,7 +120,10 @@ export default function StudioClient() {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session?.access_token}`
             },
-            body: JSON.stringify({ reference: reference.reference })
+            body: JSON.stringify({ 
+              reference: reference.reference,
+              tier: selectedTier 
+            })
           });
 
           const result = await response.json();
@@ -131,7 +179,6 @@ export default function StudioClient() {
 
             {/* The inner badge background */}
             <div className="relative flex items-center gap-3 px-6 py-2.5 rounded-full bg-background border border-foreground/10 group-hover:border-foreground/5 transition-colors duration-500 overflow-hidden h-full w-full">
-
               {/* Glassmorphism subtle overlay */}
               <div className="absolute inset-0 bg-foreground/5 backdrop-blur-md" />
 
@@ -168,22 +215,23 @@ export default function StudioClient() {
           </motion.h1>
 
           <motion.p variants={itemVariants} className="text-lg md:text-2xl text-foreground/60 leading-relaxed font-light mb-16 max-w-2xl mx-auto">
-            A dedicated subscription platform for professional photographers to upload their high-resolution event galleries, making it effortless for guests to view and download their memories.
+            A dedicated subscription platform for professional photographers to upload high-resolution event galleries, making it effortless for clients and guests to view and download their memories.
           </motion.p>
         </motion.div>
+
+        {/* 3D Interactive Device Mockups */}
         <motion.div
-          className="relative z-10 w-full max-w-[500px] md:max-w-[700px] mx-auto md:mt-24 px-4"
+          className="relative z-10 w-full max-w-[550px] md:max-w-[780px] mx-auto my-6 md:my-14 px-4"
           style={{ perspective: 2000 }}
-          initial={{ opacity: 0, y: 100 }}
+          initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/*devices animation*/}
           <motion.div
             style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            animate={{ y: [0, -15, 0] }}
+            animate={{ y: [0, -12, 0] }}
             transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-            className="relative w-full aspect-[4/3] flex items-center justify-center group"
+            className="relative w-full aspect-[16/10] sm:aspect-[16/9] flex items-center justify-center group"
           >
             {/* Dynamic Glow/Shadow behind the devices */}
             <motion.div
@@ -191,37 +239,36 @@ export default function StudioClient() {
               className="absolute inset-0 bg-white/10 blur-[80px] md:blur-[100px] rounded-full scale-75 group-hover:bg-white/20 group-hover:scale-90 transition-all duration-700 pointer-events-none"
             />
 
-            {/* Left laptop: (Back) */}
+            {/* Left/Back: Laptop */}
             <motion.img
               src="/laptop.png"
-              alt="Gallery Demo"
-              className="absolute w-[100%] sm:w-[100%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-0 cursor-crosshair"
+              alt="Studio Laptop Gallery Demo"
+              className="absolute w-[85%] sm:w-[80%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-0 cursor-crosshair"
               style={{
-                x: "-5%",
+                x: "-8%",
                 y: "5%",
-                z: -40,
-                rotateZ: 0,
-                filter: "brightness(0.9) contrast(1.1)"
+                z: -30,
+                filter: "brightness(0.95) contrast(1.05)"
               }}
-              whileHover={{ scale: 1.05, filter: "brightness(1) contrast(1.1)", z: 10 }}
+              whileHover={{ scale: 1.03, filter: "brightness(1) contrast(1.1)", z: 10 }}
             />
 
-            {/* Right Phone: Gallery (Front) */}
+            {/* Right/Front: Mobile Kid Birthday Gallery */}
             <motion.img
               src="/kid_birthday.png"
-              alt="Camera Screen Demo"
-              className="absolute w-[40%] sm:w-[40%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-10 cursor-pointer"
+              alt="Client Mobile Gallery View"
+              className="absolute w-[35%] sm:w-[32%] h-auto object-contain drop-shadow-2xl transition-all duration-700 ease-out z-10 cursor-pointer"
               style={{
-                x: "60%",
-                y: "-5%",
-                z: 60,
-                rotateZ: 0
+                x: "55%",
+                y: "0%",
+                z: 50,
               }}
-              whileHover={{ scale: 1.05, z: 90 }}
+              whileHover={{ scale: 1.06, z: 80 }}
             />
           </motion.div>
-
         </motion.div>
+
+        {/* Feature Highlights */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -229,11 +276,8 @@ export default function StudioClient() {
           transition={{ duration: 0.8 }}
           className="grid md:grid-cols-2 gap-6 lg:gap-10 text-left w-full mt-8 max-w-4xl mx-auto"
         >
-
           <div className="glass p-10 md:p-12 rounded-[3rem] flex flex-col group hover:bg-foreground/5 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl border border-foreground/10 relative overflow-hidden">
-            {/* Hover gradient effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-foreground/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
             <div className="w-16 h-16 rounded-full border border-foreground/20 flex items-center justify-center mb-8 group-hover:bg-foreground group-hover:text-background transition-colors duration-500 relative z-10">
               <Upload className="w-6 h-6" />
             </div>
@@ -244,40 +288,146 @@ export default function StudioClient() {
           </div>
 
           <div className="glass p-10 md:p-12 rounded-[3rem] flex flex-col group hover:bg-foreground/5 transition-all duration-500 md:translate-y-12 hover:md:translate-y-10 hover:shadow-2xl border border-foreground/10 relative overflow-hidden">
-            {/* Hover gradient effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-foreground/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
             <div className="w-16 h-16 rounded-full border border-foreground/20 flex items-center justify-center mb-8 group-hover:bg-foreground group-hover:text-background transition-colors duration-500 relative z-10">
               <Download className="w-6 h-6" />
             </div>
             <h3 className="font-serif text-4xl mb-4 relative z-10">Easy Downloads</h3>
             <p className="text-base opacity-60 leading-relaxed relative z-10">
-              Users and event guests can easily access the gallery and download the high-resolution pictures straight to their devices without jumping through hoops or creating complex accounts.
+              Users and event guests can easily access the gallery and download high-resolution pictures straight to their devices without jumping through hoops or creating complex accounts.
             </p>
           </div>
-
         </motion.div>
 
+        {/* Plan Selector & Checkout Section */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="mt-40 max-w-xl mx-auto flex flex-col items-center relative"
+          className="mt-32 max-w-3xl mx-auto flex flex-col items-center relative w-full"
         >
           {/* Subtle glow behind the CTA */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-foreground/10 blur-[100px] rounded-full pointer-events-none -z-10" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-foreground/10 blur-[120px] rounded-full pointer-events-none -z-10" />
 
-          <h3 className="font-serif text-4xl md:text-5xl mb-4 text-center">Start your Studio</h3>
-          <p className="text-base opacity-60 mb-10 text-center font-light leading-relaxed">
-            Join Captrd Studio starting from GH₵ 69/month to get unlimited high-resolution uploads and easy client delivery.
+          <h3 className="font-serif text-4xl md:text-5xl mb-4 text-center">Choose your Plan</h3>
+          <p className="text-base opacity-60 mb-10 text-center font-light leading-relaxed max-w-md">
+            Select the tier that best fits your workflow. Upgrade or cancel anytime.
           </p>
+
+          {/* Tier Switcher Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-10 text-left">
+            {/* Starter Option */}
+            <div
+              onClick={() => setSelectedTier('starter')}
+              className={`glass p-8 rounded-[2.5rem] border cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
+                selectedTier === 'starter'
+                  ? 'border-foreground bg-foreground/10 shadow-[0_0_30px_rgba(255,255,255,0.1)] scale-[1.02]'
+                  : 'border-foreground/10 hover:border-foreground/30 opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-xs uppercase tracking-widest opacity-60">Starter</span>
+                  {isAlreadySubscriber && currentUserTier === 'starter' ? (
+                    <span className="px-3 py-1 rounded-full bg-foreground/20 text-foreground font-mono text-[9px] uppercase tracking-wider">
+                      Current Plan
+                    </span>
+                  ) : selectedTier === 'starter' && (
+                    <span className="px-3 py-1 rounded-full bg-foreground text-background font-mono text-[9px] uppercase tracking-wider">
+                      Selected
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className="font-serif text-4xl">GH₵ 69</span>
+                  <span className="opacity-60 text-xs">/ month</span>
+                </div>
+                <p className="text-xs opacity-70 mb-6">
+                  Perfect for independent photographers with small to mid-sized event galleries.
+                </p>
+                <ul className="space-y-2.5 text-xs opacity-80">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-foreground shrink-0" />
+                    <span>Up to 150 photos per gallery</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-foreground shrink-0" />
+                    <span>Up to 5 active galleries</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-foreground shrink-0" />
+                    <span>High-res client downloads</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Pro Option */}
+            <div
+              onClick={() => setSelectedTier('pro')}
+              className={`glass p-8 rounded-[2.5rem] border cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
+                selectedTier === 'pro'
+                  ? 'border-foreground bg-foreground/10 shadow-[0_0_30px_rgba(255,255,255,0.1)] scale-[1.02]'
+                  : 'border-foreground/10 hover:border-foreground/30 opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-xs uppercase tracking-widest opacity-60">Pro</span>
+                  {isAlreadySubscriber && currentUserTier === 'pro' ? (
+                    <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 font-mono text-[9px] uppercase tracking-wider">
+                      Current Plan
+                    </span>
+                  ) : isAlreadySubscriber && currentUserTier === 'starter' && selectedTier === 'pro' ? (
+                    <span className="px-3 py-1 rounded-full bg-amber-500 text-black font-mono text-[9px] uppercase tracking-wider font-bold">
+                      Upgrade
+                    </span>
+                  ) : selectedTier === 'pro' && (
+                    <span className="px-3 py-1 rounded-full bg-foreground text-background font-mono text-[9px] uppercase tracking-wider">
+                      Selected
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className="font-serif text-4xl">GH₵ 250</span>
+                  <span className="opacity-60 text-xs">/ month</span>
+                </div>
+                <p className="text-xs opacity-70 mb-6">
+                  Unlimited power for busy event and wedding photographers with high volume.
+                </p>
+                <ul className="space-y-2.5 text-xs opacity-80">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-foreground shrink-0" />
+                    <span>Unlimited photos per gallery</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-foreground shrink-0" />
+                    <span>Unlimited active galleries</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-foreground shrink-0" />
+                    <span>Priority cloud storage & 100MB files</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <button
             onClick={handleSubscribe}
             disabled={isSubscribing}
-            className="px-12 py-5 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] disabled:opacity-50"
+            className="w-full max-w-md py-5 bg-foreground text-background rounded-full font-medium tracking-widest text-sm uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] disabled:opacity-50"
           >
-            {isSubscribing ? "Processing..." : "Subscribe Now"}
+            {isSubscribing
+              ? "Processing..."
+              : isAlreadySubscriber
+              ? currentUserTier === "pro"
+                ? "You're on Pro (Go to Dashboard)"
+                : selectedTier === "pro"
+                ? "Upgrade to Pro - GH₵ 250/mo"
+                : "Current Plan: Starter (Go to Dashboard)"
+              : `Subscribe to ${currentTierConfig.name} - GH₵ ${currentTierConfig.priceGHS}/mo`}
           </button>
         </motion.div>
       </div>
